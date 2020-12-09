@@ -1,25 +1,28 @@
+This project will extend the NGINX RTMP module enabling it to publish RTMP video directly into an Agora channel.
 
-(1) create a directory to hold you installation:
+
+(1) create a directory to build your custom NGINX in.
 
    $ mkdir test-ngnix
 
-(2) clone nginx-agora inside it
+(2) clone this repo into the directory
 
-(3) get a recent copy of AgoraSDk and unzip it in this dir (or somewhere else)
+(3) get a recent copy of the AgoraSDk and unzip it in this dir (or somewhere else)
 
-(4) clone nginx and nginx-rtmp-module
+(4) clone the nginx and nginx-rtmp-module repos.
+
    $ git clone https://github.com/arut/nginx-rtmp-module.git
    $ git clone https://github.com/nginx/nginx.git 
 
    now, you should have the following dir structure
    + /test-ngnix
       + nginx
-      + nginx-agora
+      + server_side_custom_video_source
       + nginx-rtmp-module
       + AgoraSDK
 
 (5) install Agora C wrapper library and AgoraSDK
-   $ cd nginx-agora/libagorac
+   $ cd server_side_custom_video_source/libagorac
    $ sudo ./install.sh /path/to/agora/sdk
    $ cd ..
 
