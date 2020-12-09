@@ -72,4 +72,7 @@ Add this block to the NGINX config. The recording module will now convert the bi
               }
           }
       }
-       
+
+Running OBS
+      Set the stream in OBS to be rtmp://server_ip:1935/live
+      On the Output tab of Settings set the Keyframe Interval to be 4s and the Profile to be baseline.
