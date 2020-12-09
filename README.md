@@ -3,7 +3,7 @@ This project will extend the NGINX RTMP module enabling it to publish RTMP video
 
 (1) create a directory to build your custom NGINX in
 
-      $ mkdir test-ngnix
+      $ mkdir custom-ngnix
 
 (2) clone this repo into the directory
 
@@ -15,7 +15,7 @@ This project will extend the NGINX RTMP module enabling it to publish RTMP video
       $ git clone https://github.com/nginx/nginx.git 
 
    now, you should have the following dir structure
-   + /test-ngnix
+   + /custom-ngnix
       + nginx
       + server_side_custom_video_source
       + nginx-rtmp-module
