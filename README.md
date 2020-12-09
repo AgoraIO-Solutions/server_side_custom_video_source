@@ -1,15 +1,17 @@
 This project will extend the NGINX RTMP module enabling it to publish RTMP video directly into an Agora channel.
+For more information on the NGINX RTMP module see 
+      https://www.nginx.com/blog/video-streaming-for-remote-learning-with-nginx/
 
 
 (1) create a directory to build your custom NGINX in
 
       $ mkdir custom-ngnix
 
-(2) clone this repo into the directory
+(2) clone this current repo into the directory
 
-(3) get a recent copy of the AgoraSDk and unzip it in this dir (or somewhere else)
+(3) get a recent copy of the AgoraSDk and unzip it into the directory
 
-(4) clone the nginx and nginx-rtmp-module repos
+(4) clone the nginx and nginx-rtmp-module repos into the directory
 
       $ git clone https://github.com/arut/nginx-rtmp-module.git
       $ git clone https://github.com/nginx/nginx.git 
