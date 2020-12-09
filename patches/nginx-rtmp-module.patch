@@ -1,0 +1,60 @@
+diff --git a/config b/config
+index 51176f3..f081300 100644
+--- a/config
++++ b/config
+@@ -84,6 +84,7 @@ RTMP_CORE_SRCS="                                            \
+                 $ngx_addon_dir/dash/ngx_rtmp_dash_module.c  \
+                 $ngx_addon_dir/hls/ngx_rtmp_mpegts.c        \
+                 $ngx_addon_dir/dash/ngx_rtmp_mp4.c          \
++                $ngx_addon_dir/ngx_agora_helper.c           \
+                 "
+ 
+ 
+diff --git a/ngx_rtmp_record_module.c b/ngx_rtmp_record_module.c
+index dc2de12..b0e0b5d 100644
+--- a/ngx_rtmp_record_module.c
++++ b/ngx_rtmp_record_module.c
+@@ -12,6 +12,8 @@
+ #include "ngx_rtmp_codec_module.h"
+ #include "ngx_rtmp_record_module.h"
+ 
++#include "ngx_agora_helper.h"
++#include "agorac.h"
+ 
+ ngx_rtmp_record_done_pt             ngx_rtmp_record_done;
+ 
+@@ -668,6 +670,17 @@ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
+         }
+         ngx_rtmp_record_node_open(s, rctx);
+     }
++
++   //initialize agora
++    if(agora_init()){
++        ngx_log_error(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
++                   "record: agora initialized correctly");
++    }
++    else {
++         ngx_log_error(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
++                   "record: error while initializing agora");
++    }
++
+ }
+ 
+ 
+@@ -696,6 +709,8 @@ ngx_rtmp_record_stop(ngx_rtmp_session_t *s)
+     for (n = 0; n < ctx->rec.nelts; ++n, ++rctx) {
+         ngx_rtmp_record_node_close(s, rctx);
+     }
++
++    agora_disconnect();
+ }
+ 
+ 
+@@ -886,6 +901,7 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
+ 
+     if (h->type == NGX_RTMP_MSG_VIDEO) {
+         rctx->video = 1;
++	send_video_to_agora(s,h,in);
+     } else {
+         rctx->audio = 1;
+     }

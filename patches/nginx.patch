@@ -1,0 +1,10 @@
+diff --git a/auto/module b/auto/module
+index 3857d04c..ee22a615 100644
+--- a/auto/module
++++ b/auto/module
+@@ -176,3 +176,5 @@ elif [ "$ngx_module_link" = ADDON ]; then
+         esac
+     done
+ fi
++
++CORE_LIBS="$CORE_LIBS -lagorac -lagora_rtc_sdk"
