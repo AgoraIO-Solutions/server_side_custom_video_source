@@ -5,21 +5,21 @@ For more information on the NGINX RTMP module see
 
 The following steps assume you are using Ubuntu and have been verified with Ubuntu 18.04 on an AWS t3.medium instance where the publication of a single RTMP stream consumed less than 10% of one CPU core. 
 
-(1) install required libs
+(1) install the required libs
 
       $ sudo apt update
       $ sudo apt install build-essential git libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev
       $ sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libx264-dev nasm libavfilter-dev libopus-dev
 
-(1) create a directory to build the custom NGINX in
+(2) create a directory to build the custom NGINX in
 
       $ mkdir custom-ngnix
 
-(2) clone this current repo into the directory
+(3) clone this current repo into the directory
 
-(3) get a recent copy of the Agora Linux SDk (Nov 2020 onwards) and unzip it into the directory
+(4) get a recent copy of the Agora Linux SDk (Nov 2020 onwards) and unzip it into the directory
 
-(4) clone the nginx and nginx-rtmp-module repos into the directory
+(5) clone the nginx and nginx-rtmp-module repos into the directory
 
       $ git clone https://github.com/arut/nginx-rtmp-module.git
       $ git clone https://github.com/nginx/nginx.git 
@@ -31,23 +31,23 @@ The following steps assume you are using Ubuntu and have been verified with Ubun
       + nginx-rtmp-module
       + AgoraSDK
 
-(5) install Agora C wrapper library and AgoraSDK
+(6) install Agora C wrapper library and AgoraSDK
 
       $ cd server_side_custom_video_source/libagorac
       $ sudo ./install.sh /path/to/agora/sdk
       $ cd ..
 
-(6) copy ngx_agora_helper.c and  ngx_agora_helper.h to nginx-rtmp-module
+(7) copy ngx_agora_helper.c and  ngx_agora_helper.h to nginx-rtmp-module
 
       $ cp ngx_agora_helper.c  ../nginx-rtmp-module/
       $ cp ngx_agora_helper.h  ../nginx-rtmp-module/
    
-(7) copy nginx and nginx-rtmp-module patches
+(8) copy nginx and nginx-rtmp-module patches
 
       $ cp patches/nginx.patch ../nginx
       $ cp patches/nginx-rtmp-module.patch ../nginx-rtmp-module/
 
-(8) apply the patches 
+(9) apply the patches 
 
       $ cd ../nginx
       $ patch -f -p 1 < nginx.patch
