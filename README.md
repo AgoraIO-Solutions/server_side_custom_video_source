@@ -85,8 +85,9 @@ The following steps assume you are using Ubuntu and have been verified with Ubun
 
       $ sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx;  
 
-The NGINX recording module will now convert an inbound RTMP bitstream and send the audio and video to Agora.
-No recordings will be written to disk but it was still necessary to create the folder /tmp/rec and give it read/write permission.
+The NGINX recording module will now convert an inbound RTMP bitstream and send the audio and video to Agora
+
+No recordings will be written to disk but it was still necessary to create the folder /tmp/rec and give it read/write permission
 
 Publishing RTMP
 
