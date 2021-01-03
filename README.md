@@ -61,7 +61,7 @@ The following steps assume you are using Ubuntu and have been verified with Ubun
       $ make 
       $ sudo make install
    
-(11) configure and run
+(11) configure
 
       $ sudo vi /usr/local/nginx/conf/nginx.conf
       
@@ -79,11 +79,13 @@ The following steps assume you are using Ubuntu and have been verified with Ubun
           }
       }
       
+      $ sudo mkdir /tmp/rec; sudo chmod 777 /tmp/rec;
+   
+(12) run
       $ sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx;  
 
 The NGINX recording module will now convert an inbound RTMP bitstream and send the audio and video to Agora.
-No recordings will be written to disk but you do need to create the folder /tmp/rec and give it read/write permission.
-
+No recordings will be written to disk but it was still necessary to create the folder /tmp/rec and give it read/write permission.
 
 Publishing RTMP
       Set the RTMP URI to rtmp://server_ip:1935/live?appid=APP_ID_OR_TOKEN&channel=CHANNEL&abr=50000&end=true
