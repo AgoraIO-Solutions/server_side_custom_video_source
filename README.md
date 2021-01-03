@@ -1,15 +1,23 @@
-This project will extend the NGINX RTMP module enabling it to publish RTMP video directly into an Agora channel.
+This project extends the NGINX RTMP module, enabling it to publish RTMP audio and video directly into an Agora channel.
+
 For more information on the NGINX RTMP module see 
       https://www.nginx.com/blog/video-streaming-for-remote-learning-with-nginx/
 
+The following steps assume you are using Ubuntu and have been verified with Ubuntu 18.04 on an AWS t3.medium instance where the publication of a single RTMP stream consumed less than 10% of one CPU core. 
 
-(1) create a directory to build your custom NGINX in
+(1) install required libs
+
+      $ sudo apt update
+      $ sudo apt install build-essential git libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev
+      $ sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libx264-dev nasm libavfilter-dev libopus-dev
+
+(1) create a directory to build the custom NGINX in
 
       $ mkdir custom-ngnix
 
 (2) clone this current repo into the directory
 
-(3) get a recent copy of the AgoraSDk and unzip it into the directory
+(3) get a recent copy of the Agora Linux SDk (Nov 2020 onwards) and unzip it into the directory
 
 (4) clone the nginx and nginx-rtmp-module repos into the directory
 
@@ -47,12 +55,6 @@ For more information on the NGINX RTMP module see
       $ patch -f -p 1 < nginx-rtmp-module.patch
       $ cd ../nginx
 
-(9) Find and set the Agora AppId, Channel and optional Token in server_side_custom_video_source/libagorac/agorac.cpp as follows:
-
-     std::string app_id="APPID";
-     std::string chanel_id="CHANNEL";
-     std::string user_id="";
-
 (10) compile and run
 
       $ ./auto/configure --add-module=../nginx-rtmp-module 
@@ -61,6 +63,7 @@ For more information on the NGINX RTMP module see
    
 
 Add this block to the NGINX config. The recording module will now convert the bitstream and send to Agora.
+No recordings will be written to disk but you do need to create the folder /tmp/rec and give it 
 
       rtmp {
           server {
@@ -75,6 +78,20 @@ Add this block to the NGINX config. The recording module will now convert the bi
           }
       }
 
-Running OBS
-      Set the stream in OBS to be rtmp://server_ip:1935/live
-      On the Output tab of Settings set the Keyframe Interval to be 4s and the Profile to be baseline.
+Publishing RTMP
+      Set the RTMP URI to rtmp://server_ip:1935/live?appid=APP_ID_OR_TOKEN&channel=CHANNEL&abr=50000&end=true
+      appid can contain either the Agora App Id or an Agora Authentication Token
+      channel is the Agora channel name
+      abr is the 'audio bitrate' in bits/second. You should use 50000 for voice applications and 250000 for high definition music
+      &end=true is required to terminate the params
+
+Using OBS
+     In Settings > Stream set the Service to Custom and the Server to the RTMP URI described above
+     In Settings > Output set the Keyframe Interval to be 4s and the Profile to be baseline.
+
+You can now start streaming from OBS into Agora.
+You can view the stream inside Agora using the simple web demo here and setting the appId and channel
+	https://webdemo.agora.io/agora-web-showcase/examples/Agora-Web-Tutorial-1to1-Web/
+
+
+

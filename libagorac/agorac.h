@@ -7,12 +7,14 @@
  #define EXTERNC
  #endif
 
- EXTERNC int agora_init();
+ typedef  struct agora_context_t agora_context_t;
 
- EXTERNC int  agora_send_video(const unsigned char* buffer,  unsigned long len, int is_key_frame);
- EXTERNC int  agora_send_audio(const unsigned char* buffer,  unsigned long len);
+ EXTERNC agora_context_t*  agora_init(char* app_id, char* ch_id);
 
-  EXTERNC void agora_disconnect();
+ EXTERNC int  agora_send_video(agora_context_t* ctx,  const unsigned char* buffer,  unsigned long len, int is_key_frame);
+ EXTERNC int  agora_send_audio(agora_context_t* ctx,  const unsigned char* buffer,  unsigned long len);
+
+ EXTERNC void agora_disconnect(agora_context_t* ctx);
 
  #undef EXTERNC
 
