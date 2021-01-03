@@ -29,12 +29,12 @@ The following steps assume you are using Ubuntu and have been verified with Ubun
       + nginx
       + server_side_custom_video_source
       + nginx-rtmp-module
-      + AgoraSDK
+      + Agora_Native_SDK_for_Linux_x64_rel.v2.7.1.1_2815_FULL_20201114_0418
 
 (6) install Agora C wrapper library and AgoraSDK
 
       $ cd server_side_custom_video_source/libagorac
-      $ sudo ./install.sh /path/to/agora/sdk
+      $ sudo ./install.sh /home/ubuntu/custom-ngnix/Agora_Native_SDK_for_Linux_x64_rel.v2.7.1.1_2815_FULL_20201114_0418
       $ cd ..
 
 (7) copy ngx_agora_helper.c and  ngx_agora_helper.h to nginx-rtmp-module
@@ -55,16 +55,17 @@ The following steps assume you are using Ubuntu and have been verified with Ubun
       $ patch -f -p 1 < nginx-rtmp-module.patch
       $ cd ../nginx
 
-(10) compile and run
+(10) compile and install
 
       $ ./auto/configure --add-module=../nginx-rtmp-module 
       $ make 
-      $ sudo make insatll
+      $ sudo make install
    
+(11) configure and run
 
-Add this block to the NGINX config. The recording module will now convert the bitstream and send to Agora.
-No recordings will be written to disk but you do need to create the folder /tmp/rec and give it 
-
+      $ sudo vi /usr/local/nginx/conf/nginx.conf
+      
+      # add the following block to the NGINX config file (above the http block is fine)
       rtmp {
           server {
               listen 1935;
@@ -77,6 +78,12 @@ No recordings will be written to disk but you do need to create the folder /tmp/
               }
           }
       }
+      
+      $ sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx;  
+
+The NGINX recording module will now convert an inbound RTMP bitstream and send the audio and video to Agora.
+No recordings will be written to disk but you do need to create the folder /tmp/rec and give it read/write permission.
+
 
 Publishing RTMP
       Set the RTMP URI to rtmp://server_ip:1935/live?appid=APP_ID_OR_TOKEN&channel=CHANNEL&abr=50000&end=true
@@ -90,7 +97,7 @@ Using OBS
      In Settings > Output set the Keyframe Interval to be 4s and the Profile to be baseline.
 
 You can now start streaming from OBS into Agora.
-You can view the stream inside Agora using the simple web demo here and setting the appId and channel
+You can view the stream inside Agora using the simple web demo here and setting the relevant appId and channel
 	https://webdemo.agora.io/agora-web-showcase/examples/Agora-Web-Tutorial-1to1-Web/
 
 
