@@ -74,7 +74,6 @@ The following steps assume you are using Ubuntu and have been verified with Ubun
                       interleave on;
                       record all;
                       record_path /tmp/rec;
-                      record_unique off;
               }
           }
       }
