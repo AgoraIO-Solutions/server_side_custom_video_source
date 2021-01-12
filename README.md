@@ -113,5 +113,7 @@ You can view the stream inside Agora using the simple web demo here and setting 
 
 	https://webdemo.agora.io/agora-web-showcase/examples/Agora-Web-Tutorial-1to1-Web/
 
+To stop NGINX 
+     sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx -s stop
 
 
