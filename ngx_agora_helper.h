@@ -9,7 +9,7 @@ typedef struct ngx_agora_context_t ngx_agora_context_t;
  * Must be called before sending any audio/video
  * @return: allocated agora context
  */
-ngx_agora_context_t* ngx_agora_init(char* app_id, char* ch_id,ngx_int_t bitrate);
+ngx_agora_context_t* ngx_agora_init(char* app_id, char* ch_id,char* user_id, ngx_int_t bitrate);
 
 /*
  * disconnect from agora. Deallocate agora context

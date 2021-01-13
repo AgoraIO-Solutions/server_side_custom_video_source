@@ -90,11 +90,13 @@ No recordings will be written to disk but it was still necessary to create the f
 
 Publishing RTMP
 
-      Set the RTMP URI to rtmp://server_ip:1935/live?appid=APP_ID_OR_TOKEN&channel=CHANNEL&abr=50000&end=true
+      Set the RTMP URI to rtmp://server_ip:1935/live?appid=APP_ID_OR_TOKEN&channel=CHANNEL&uid=USER_ID&abr=50000&end=true
       
       appid can contain either the Agora App Id or an Agora Authentication Token
       
       channel is the Agora channel name
+
+      uid is agora user id (optional)
       
       abr is the 'audio bitrate' in bits/second. You should use 50000 for voice applications and 250000 for high definition music
       

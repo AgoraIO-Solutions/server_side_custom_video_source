@@ -101,14 +101,14 @@ agora::base::IAgoraService* createAndInitAgoraService(bool enableAudioDevice,
 }
 
 
-agora_context_t*  agora_init(char* in_app_id, char* in_ch_id){
+agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id){
 
 
   agora_context_t* ctx=new agora_context_t;
 
   std::string app_id(in_app_id);
   std::string chanel_id=(in_ch_id);
-  std::string user_id="";
+  std::string user_id(in_user_id);
 
   //set configuration
   ctx->config.clientRoleType = agora::rtc::CLIENT_ROLE_BROADCASTER;;

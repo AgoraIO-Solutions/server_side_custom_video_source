@@ -780,7 +780,7 @@ ngx_int_t ngx_agora_send_audio(ngx_agora_context_t *ctx,  ngx_rtmp_session_t *s,
     return NGX_OK;
 }
 
-ngx_agora_context_t* ngx_agora_init(char* app_id, char* ch_id,ngx_int_t bitrate)
+ngx_agora_context_t* ngx_agora_init(char* app_id, char* ch_id,char* user_id, ngx_int_t bitrate)
 {
    agora_context_t        *agora_ctx;
    agora_audio_context_t  *audio_context;
@@ -791,7 +791,7 @@ ngx_agora_context_t* ngx_agora_init(char* app_id, char* ch_id,ngx_int_t bitrate)
    }
 
    //initialize agora
-   agora_ctx=agora_init(app_id, ch_id);
+   agora_ctx=agora_init(app_id, ch_id,user_id);
    if(agora_ctx==NULL){
      free(ctx);
      return NULL;
