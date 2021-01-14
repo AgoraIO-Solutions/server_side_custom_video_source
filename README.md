@@ -96,7 +96,7 @@ Publishing RTMP
       
       channel is the Agora channel name
 
-      uid is agora user id (optional)
+      uid is the agora user id (optional)
       
       abr is the 'audio bitrate' in bits/second. You should use 50000 for voice applications and 250000 for high definition music
       
