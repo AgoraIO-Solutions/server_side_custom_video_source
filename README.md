@@ -8,7 +8,7 @@ The following steps assume you are using Ubuntu and have been verified with Ubun
 (1) install the required libs
 
       $ sudo apt update
-      $ sudo apt install build-essential git libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev
+      $ sudo apt install build-essential git libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev unzip
       $ sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libx264-dev nasm libavfilter-dev libopus-dev
 
 (2) create a directory to build the custom NGINX in
