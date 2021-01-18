@@ -58,7 +58,7 @@ index 13f6677..c3ec9ee 100644
                    "publish: name='%s' args='%s' type=%s silent=%d",
                    v.name, v.args, v.type, v.silent);
 diff --git a/ngx_rtmp_record_module.c b/ngx_rtmp_record_module.c
-index dc2de12..85fe277 100644
+index dc2de12..f22468e 100644
 --- a/ngx_rtmp_record_module.c
 +++ b/ngx_rtmp_record_module.c
 @@ -12,6 +12,7 @@
@@ -69,7 +69,26 @@ index dc2de12..85fe277 100644
  
  ngx_rtmp_record_done_pt             ngx_rtmp_record_done;
  
-@@ -648,6 +649,16 @@ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
+@@ -446,6 +447,8 @@ ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
+     rracf = rctx->conf;
+     tag_size = 0;
+ 
++
++
+     if (rctx->file.fd != NGX_INVALID_FILE) {
+         return NGX_AGAIN;
+     }
+@@ -458,6 +461,9 @@ ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
+     rctx->last = *ngx_cached_time;
+     rctx->timestamp = ngx_cached_time->sec;
+ 
++    //TODO: we do not need to open a file
++    return NGX_OK;
++
+     ngx_rtmp_record_make_path(s, rctx, &path);
+ 
+     mode = rracf->append ? NGX_FILE_RDWR : NGX_FILE_WRONLY;
+@@ -648,6 +654,16 @@ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
      ngx_rtmp_record_ctx_t          *ctx;
      ngx_uint_t                      n;
  
@@ -86,7 +105,7 @@ index dc2de12..85fe277 100644
      racf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_record_module);
      if (racf == NULL || racf->rec.nelts == 0) {
          return;
-@@ -668,6 +679,47 @@ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
+@@ -668,6 +684,47 @@ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
          }
          ngx_rtmp_record_node_open(s, rctx);
      }
@@ -134,7 +153,7 @@ index dc2de12..85fe277 100644
  }
  
  
-@@ -696,6 +748,9 @@ ngx_rtmp_record_stop(ngx_rtmp_session_t *s)
+@@ -696,6 +753,9 @@ ngx_rtmp_record_stop(ngx_rtmp_session_t *s)
      for (n = 0; n < ctx->rec.nelts; ++n, ++rctx) {
          ngx_rtmp_record_node_close(s, rctx);
      }
@@ -144,8 +163,11 @@ index dc2de12..85fe277 100644
  }
  
  
-@@ -886,10 +941,15 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
+@@ -884,12 +944,18 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
+                    "record: %V frame: mlen=%uD",
+                    &rracf->id, h->mlen);
  
++
      if (h->type == NGX_RTMP_MSG_VIDEO) {
          rctx->video = 1;
 +	ngx_agora_send_video(s->agora_ctx,s,h,in);
@@ -160,3 +182,28 @@ index dc2de12..85fe277 100644
      timestamp = h->timestamp - rctx->epoch;
  
      if ((int32_t) timestamp < 0) {
+@@ -1028,10 +1094,10 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
+ 
+     rracf = rctx->conf;
+ 
+-    if (rracf->flags & NGX_RTMP_RECORD_OFF) {
++   /*if (rracf->flags & NGX_RTMP_RECORD_OFF) {
+         ngx_rtmp_record_node_close(s, rctx);
+         return NGX_OK;
+-    }
++    }*/
+ 
+     keyframe = (h->type == NGX_RTMP_MSG_VIDEO)
+              ? (ngx_rtmp_get_video_frame_type(in) == NGX_RTMP_VIDEO_KEY_FRAME)
+@@ -1069,9 +1135,9 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
+         return NGX_OK;
+     }
+ 
+-    if (rctx->file.fd == NGX_INVALID_FILE) {
++    /*if (rctx->file.fd == NGX_INVALID_FILE) {
+         return NGX_OK;
+-    }
++    }*/
+ 
+     if (h->type == NGX_RTMP_MSG_AUDIO &&
+        (rracf->flags & NGX_RTMP_RECORD_AUDIO) == 0)
