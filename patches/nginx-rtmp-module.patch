@@ -58,7 +58,7 @@ index 13f6677..c3ec9ee 100644
                    "publish: name='%s' args='%s' type=%s silent=%d",
                    v.name, v.args, v.type, v.silent);
 diff --git a/ngx_rtmp_record_module.c b/ngx_rtmp_record_module.c
-index dc2de12..f22468e 100644
+index dc2de12..56258fd 100644
 --- a/ngx_rtmp_record_module.c
 +++ b/ngx_rtmp_record_module.c
 @@ -12,6 +12,7 @@
@@ -163,7 +163,17 @@ index dc2de12..f22468e 100644
  }
  
  
-@@ -884,12 +944,18 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
+@@ -794,6 +854,9 @@ ngx_rtmp_record_node_close(ngx_rtmp_session_t *s,
+ 
+     rracf = rctx->conf;
+ 
++    //TODO: we do not record to a file
++    return NGX_OK;
++
+     if (rctx->file.fd == NGX_INVALID_FILE) {
+         return NGX_AGAIN;
+     }
+@@ -884,12 +947,18 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
                     "record: %V frame: mlen=%uD",
                     &rracf->id, h->mlen);
  
@@ -182,7 +192,7 @@ index dc2de12..f22468e 100644
      timestamp = h->timestamp - rctx->epoch;
  
      if ((int32_t) timestamp < 0) {
-@@ -1028,10 +1094,10 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
+@@ -1028,10 +1097,10 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
  
      rracf = rctx->conf;
  
@@ -195,7 +205,7 @@ index dc2de12..f22468e 100644
  
      keyframe = (h->type == NGX_RTMP_MSG_VIDEO)
               ? (ngx_rtmp_get_video_frame_type(in) == NGX_RTMP_VIDEO_KEY_FRAME)
-@@ -1069,9 +1135,9 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
+@@ -1069,9 +1138,9 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
          return NGX_OK;
      }
  
