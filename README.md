@@ -5,6 +5,8 @@ For more information on the NGINX RTMP module see
 
 The following steps assume you are using Ubuntu and have been verified with Ubuntu 18.04 on an AWS t3.medium instance where the publication of a single RTMP stream consumed less than 10% of one CPU core. 
 
+It is also possible to perform all the steps below and clean up using ./server_side_custom_video_source/setup.sh after cloning this repo. 
+
 (1) install the required libs
 
       $ sudo apt update
