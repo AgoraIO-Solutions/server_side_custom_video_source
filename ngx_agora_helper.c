@@ -726,8 +726,6 @@ ngx_int_t ngx_agora_send_audio(ngx_agora_context_t *ctx,  ngx_rtmp_session_t *s,
          ngx_flush_audio(ctx);
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
-                   " audio pts=%uL", pts);
 
     if (b->last + 7 > b->end) {
         ngx_log_debug0(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,

@@ -79,6 +79,9 @@ It is also possible to perform all the steps below and clean up using ./server_s
               }
           }
       }
+
+      To enable media log: add this line to the config:
+      error_log logs/error.log debug;
       
       $ sudo mkdir /tmp/rec; sudo chmod 777 /tmp/rec;
    

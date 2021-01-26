@@ -14,6 +14,8 @@
 #include <string.h>
 #include <chrono>
 
+#include "agoralog.h"
+
 //agora types
 
 using AgoraVideoSender_ptr=agora::agora_refptr<agora::rtc::IVideoEncodedImageSender>;
@@ -79,9 +81,7 @@ public:
    bool                   is_finished;
    
 };
-void logMessage(std::string message){
   
-}
 
 static void VideoThreadHandler(agora_context_t* ctx);
 static void AudioThreadHandler(agora_context_t* ctx);
@@ -133,14 +133,17 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id){
   // Connect to Agora channel
   auto  connected =  ctx->connection->connect(app_id.c_str(), chanel_id.c_str(), user_id.c_str());
   if (connected) {
+      logMessage("agora NOT connected!");
      delete ctx;
      return NULL;
   }
+  logMessage("agora connected successfully!");
 
 
   // Create media node factory
   auto factory = ctx->service->createMediaNodeFactory();
   if (!factory) {
+    delete ctx;
     return NULL;
   }
 
@@ -149,6 +152,7 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id){
   // Create audio data sender
    ctx->audioSender = factory->createAudioEncodedFrameSender();
   if (!ctx->audioSender) {
+    delete ctx;
     return NULL;
   }
 
@@ -186,6 +190,8 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id){
   //start thread handlers
   ctx->videoThread=std::make_shared<std::thread>(&VideoThreadHandler,ctx);
   ctx->audioThread=std::make_shared<std::thread>(&AudioThreadHandler,ctx);
+
+  logMessage("Agora initialized correctly.");
 
   return ctx;
 }
@@ -264,6 +270,8 @@ static void AudioThreadHandler(agora_context_t* ctx){
 }
 void agora_disconnect(agora_context_t* ctx){
 
+  logMessage("Agora disconnecting ...");
+
    ctx->isRunning=true;
    //tell the thread that we are finished
    Work_ptr work=std::make_shared<Work>(nullptr,0, false);
@@ -276,13 +284,14 @@ void agora_disconnect(agora_context_t* ctx){
    ctx->connection->getLocalUser()->unpublishVideo(ctx->videoTrack);
 
    bool  isdisconnected=ctx->connection->disconnect();
-   if(!isdisconnected){
+   if(isdisconnected){
+      logMessage("Agora failed to disconnect!");
       return;
    }
-//   std::this_thread::sleep_for(std::chrono::seconds(1));
 
    ctx->audioSender = nullptr;
    ctx->videoSender = nullptr;
+
    ctx->audioTrack = nullptr;
    ctx->videoTrack = nullptr;
 
@@ -290,7 +299,10 @@ void agora_disconnect(agora_context_t* ctx){
    ctx->connection=nullptr;
   
    ctx->videoThread->detach();
-   ctx->audioThread->detach(); 
+   ctx->audioThread->detach();
+
+
+   logMessage("Agora disconnected successfully."); 
 }
 
 int agora_send_audio(agora_context_t* ctx,const unsigned char * buffer,  unsigned long len){
