@@ -122,5 +122,15 @@ You can view the stream inside Agora using the simple web demo here and setting 
 
 To stop NGINX 
      sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx -s stop
+     
+     
+Logging 
+     Log level is set in /usr/local/nginx/conf/nginx.conf
+     default is 
+     error_log logs/error.log notice;
+     Can change notice to debug and then restart with 
+         sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx -s stop;  sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx 
+     log files are in /usr/local/nginx/conf and /tmp for agora logs
+     
 
 
