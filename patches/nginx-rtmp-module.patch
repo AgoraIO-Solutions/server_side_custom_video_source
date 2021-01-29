@@ -11,7 +11,7 @@ index 51176f3..f081300 100644
  
  
 diff --git a/ngx_rtmp.h b/ngx_rtmp.h
-index cbe6a93..e903dae 100644
+index cbe6a93..121efda 100644
 --- a/ngx_rtmp.h
 +++ b/ngx_rtmp.h
 @@ -187,7 +187,7 @@ typedef struct {
@@ -23,11 +23,12 @@ index cbe6a93..e903dae 100644
  typedef struct {
      uint32_t                signature;  /* "RTMP" */ /* <-- FIXME wtf */
  
-@@ -268,6 +268,9 @@ typedef struct {
+@@ -268,6 +268,10 @@ typedef struct {
      size_t                  out_queue;
      size_t                  out_cork;
      ngx_chain_t            *out[0];
 +
++    ngx_flag_t              is_agora_media_error_shown;
 +    struct  ngx_agora_context_t*   agora_ctx;
 +
  } ngx_rtmp_session_t;
@@ -284,7 +285,7 @@ index 13f6677..e174493 100644
      ngx_rtmp_handler_pt                *h;
      ngx_rtmp_amf_handler_t             *ch, *bh;
 diff --git a/ngx_rtmp_record_module.c b/ngx_rtmp_record_module.c
-index dc2de12..fdc6d0c 100644
+index dc2de12..d2872f8 100644
 --- a/ngx_rtmp_record_module.c
 +++ b/ngx_rtmp_record_module.c
 @@ -1,4 +1,3 @@
@@ -319,7 +320,15 @@ index dc2de12..fdc6d0c 100644
      ngx_rtmp_record_make_path(s, rctx, &path);
  
      mode = rracf->append ? NGX_FILE_RDWR : NGX_FILE_WRONLY;
-@@ -648,6 +653,16 @@ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
+@@ -640,6 +645,7 @@ ngx_rtmp_record_init(ngx_rtmp_session_t *s)
+ }
+ 
+ 
++
+ static void
+ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
+ {
+@@ -648,6 +654,19 @@ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
      ngx_rtmp_record_ctx_t          *ctx;
      ngx_uint_t                      n;
  
@@ -330,13 +339,16 @@ index dc2de12..fdc6d0c 100644
 +    char  channel[PARAM_MAX_LEN];
 +    char  user_id[PARAM_MAX_LEN];
 +    char  bitrate_str[50];
++    char  temp_buffer[PARAM_MAX_LEN];
 +
 +    s->agora_ctx=NULL;
++
++     s->is_agora_media_error_shown=0;
 +
      racf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_record_module);
      if (racf == NULL || racf->rec.nelts == 0) {
          return;
-@@ -668,6 +683,49 @@ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
+@@ -668,6 +687,81 @@ ngx_rtmp_record_start(ngx_rtmp_session_t *s)
          }
          ngx_rtmp_record_node_open(s, rctx);
      }
@@ -357,6 +369,38 @@ index dc2de12..fdc6d0c 100644
 +
 +    ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
 +                   "record: appid=%s,channelid=%s",s->args.data,appid, channel);
++
++
++     ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
++                   "record: received  appid : %s", appid);
++
++
++      //replace forward slash text
++     char forward_slash_text[]="FORWARDSLASH";
++     char* forward_slash_start_pos=NULL;
++     while((forward_slash_start_pos=strstr(appid,forward_slash_text))!=NULL){
++
++     	 memset(temp_buffer,0,PARAM_MAX_LEN);
++	 ngx_int_t  before_slash_text_len=forward_slash_start_pos-appid;
++         ngx_int_t  after_slash_text_len=strlen(appid)-before_slash_text_len-strlen(forward_slash_text);
++
++	 //copy the first part
++	 memcpy(&temp_buffer[0], &appid[0], before_slash_text_len);
++
++	 //copy slash
++	 memcpy(&temp_buffer[before_slash_text_len], "/", 1);
++
++	 //copy text after slash
++	 memcpy(&temp_buffer[before_slash_text_len+1],  &appid[before_slash_text_len+strlen(forward_slash_text)], after_slash_text_len);
++
++	 //copy back to appid
++	 memset(appid,0,PARAM_MAX_LEN);
++         memcpy(appid, temp_buffer, strlen(temp_buffer));
++	
++	 ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
++                   "record: appid after replacement: %s", appid);
++     }
++
 +
 +    //bitrate
 +    if(get_arg_value(s->args,"abr",bitrate_str)==0){
@@ -386,7 +430,7 @@ index dc2de12..fdc6d0c 100644
  }
  
  
-@@ -689,13 +747,20 @@ ngx_rtmp_record_stop(ngx_rtmp_session_t *s)
+@@ -689,13 +783,20 @@ ngx_rtmp_record_stop(ngx_rtmp_session_t *s)
          return;
      }
  
@@ -408,7 +452,7 @@ index dc2de12..fdc6d0c 100644
  }
  
  
-@@ -794,6 +859,9 @@ ngx_rtmp_record_node_close(ngx_rtmp_session_t *s,
+@@ -794,6 +895,9 @@ ngx_rtmp_record_node_close(ngx_rtmp_session_t *s,
  
      rracf = rctx->conf;
  
@@ -418,7 +462,7 @@ index dc2de12..fdc6d0c 100644
      if (rctx->file.fd == NGX_INVALID_FILE) {
          return NGX_AGAIN;
      }
-@@ -880,16 +948,38 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
+@@ -880,16 +984,43 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
  
      rracf = rctx->conf;
  
@@ -429,9 +473,14 @@ index dc2de12..fdc6d0c 100644
 +                   &rracf->id, h->mlen);*/
 +
 +    if(s->agora_ctx==NULL){
++
++        if(s->is_agora_media_error_shown==0){
  
-+        ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
-+                   "record: error cannot send A/V because agora is not yet initialized");
++          ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
++                   "record: error cannot send A/V because agora has not yet been initialized");
++
++	   s->is_agora_media_error_shown=1;
++	}
 +
 +       return NGX_ERROR;
 +    }
@@ -459,7 +508,7 @@ index dc2de12..fdc6d0c 100644
      timestamp = h->timestamp - rctx->epoch;
  
      if ((int32_t) timestamp < 0) {
-@@ -1028,10 +1118,10 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
+@@ -1028,10 +1159,10 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
  
      rracf = rctx->conf;
  
@@ -472,7 +521,7 @@ index dc2de12..fdc6d0c 100644
  
      keyframe = (h->type == NGX_RTMP_MSG_VIDEO)
               ? (ngx_rtmp_get_video_frame_type(in) == NGX_RTMP_VIDEO_KEY_FRAME)
-@@ -1069,9 +1159,9 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
+@@ -1069,9 +1200,9 @@ ngx_rtmp_record_node_av(ngx_rtmp_session_t *s, ngx_rtmp_record_rec_ctx_t *rctx,
          return NGX_OK;
      }
  
