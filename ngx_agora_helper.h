@@ -3,13 +3,14 @@
  * this file contains helper funtions to send video to agora nginx-rtmp-module
  */
 typedef struct ngx_agora_context_t ngx_agora_context_t; 
+//typedef struct ngx_rtmp_session_t  ngx_rtmp_session_t;
 
 /*
  * initialize agora context and audio encoder/decoders. 
  * Must be called before sending any audio/video
  * @return: allocated agora context
  */
-ngx_agora_context_t* ngx_agora_init(char* app_id, char* ch_id,char* user_id, ngx_int_t bitrate);
+ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s);
 
 /*
  * disconnect from agora. Deallocate agora context

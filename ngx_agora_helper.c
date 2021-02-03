@@ -20,12 +20,15 @@
 
 #include <opus/opus.h>
 
+
 #define NGX_RTMP_HLS_BUFSIZE            (1024*1024)
 #define MAX_AUDIO_BUFFER_SIZE           2*1024
 
 #define INPUT_SAMPLE_COUNT               1024
 #define OPUS_SAMPLE_COUNT                960
 #define MAX_CHANNEL_COUNT                2
+
+#define PARAM_MAX_LEN                    1024
 
 typedef struct 
 {
@@ -44,6 +47,7 @@ typedef struct
 
    uint32_t           remaining_count;
    uint8_t            remaining_bytes[INPUT_SAMPLE_COUNT*sizeof(int16_t)*MAX_CHANNEL_COUNT];
+
 } agora_audio_context_t;;
 
 typedef struct
@@ -51,6 +55,9 @@ typedef struct
    agora_context_t        *agora_ctx;
    agora_audio_context_t  *audio_context;
 } ngx_agora_context_t;
+
+static void agora_log_wrapper(void* log_ctx, const char* message);
+ngx_int_t get_arg_value(ngx_str_t args, const char* key, char* value);
 
 static ngx_int_t append_aud(ngx_rtmp_session_t *s, ngx_buf_t *out)
 {
@@ -399,18 +406,25 @@ u_char*                   buffer=NULL;
 ngx_int_t                 keyframe=0;
 ngx_int_t                 len=0;
 
-	keyframe=(ngx_rtmp_get_video_frame_type(in) == NGX_RTMP_VIDEO_KEY_FRAME);
-        //show_states(s, keyframe);
+   if(ctx==NULL){
+      ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,"Agora has not been connected!");
+       return NGX_OK;
+    }
 
-        len=avcc_to_annexb(s,h,in,&buffer);
-        if(buffer!=NULL){
-           agora_send_video(ctx->agora_ctx,  buffer,len,keyframe);
-           free(buffer);
+   keyframe=(ngx_rtmp_get_video_frame_type(in) == NGX_RTMP_VIDEO_KEY_FRAME);     
+   len=avcc_to_annexb(s,h,in,&buffer);
 
-           return len;
-        }
+   if(keyframe){
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,"Key frame (rtmp)");
+   }
 
-	return 0;
+   if(buffer!=NULL){
+       agora_send_video(ctx->agora_ctx,  buffer,len,keyframe);
+       free(buffer);
+
+       return len;
+     }
+    return 0;
 }
 
 
@@ -686,6 +700,11 @@ ngx_int_t ngx_agora_send_audio(ngx_agora_context_t *ctx,  ngx_rtmp_session_t *s,
 
     ngx_buf_t           *b;
 
+    if(ctx==NULL){
+      ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,"Agora has not been connected!");
+       return NGX_OK;
+    }
+
     agora_audio_context_t* audio_ctx=ctx->audio_context;
 
    if( audio_ctx==NULL){
@@ -726,6 +745,8 @@ ngx_int_t ngx_agora_send_audio(ngx_agora_context_t *ctx,  ngx_rtmp_session_t *s,
          ngx_flush_audio(ctx);
     }
 
+    ngx_log_debug1(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
+                   " audio pts=%uL", pts);
 
     if (b->last + 7 > b->end) {
         ngx_log_debug0(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
@@ -778,10 +799,174 @@ ngx_int_t ngx_agora_send_audio(ngx_agora_context_t *ctx,  ngx_rtmp_session_t *s,
     return NGX_OK;
 }
 
-ngx_agora_context_t* ngx_agora_init(char* app_id, char* ch_id,char* user_id, ngx_int_t bitrate)
+void ngx_agora_replace_forward_slash(ngx_rtmp_session_t *s, char* appid){
+
+   char  temp_buffer[PARAM_MAX_LEN];
+
+   //replace forward slash text
+   char forward_slash_text[]="%2F";
+   char* forward_slash_start_pos=NULL;
+   while((forward_slash_start_pos=strstr(appid,forward_slash_text))!=NULL){
+
+         memset(temp_buffer,0,PARAM_MAX_LEN);
+         ngx_int_t  before_slash_text_len=forward_slash_start_pos-appid;
+         ngx_int_t  after_slash_text_len=strlen(appid)-before_slash_text_len-strlen(forward_slash_text);
+
+         //copy the first part
+         memcpy(&temp_buffer[0], &appid[0], before_slash_text_len);
+
+         //copy slash
+         memcpy(&temp_buffer[before_slash_text_len], "/", 1);
+
+         //copy text after slash
+         memcpy(&temp_buffer[before_slash_text_len+1],  &appid[before_slash_text_len+strlen(forward_slash_text)], after_slash_text_len);
+
+         //copy back to appid
+         memset(appid,0,PARAM_MAX_LEN);
+         memcpy(appid, temp_buffer, strlen(temp_buffer));
+
+         ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: appid after replacement: %s", appid);
+     }
+}
+
+ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
 {
+
    agora_context_t        *agora_ctx;
    agora_audio_context_t  *audio_context;
+
+
+   //extract appid, channel and other params from the given string
+    char  appid[PARAM_MAX_LEN];
+    char  channel[PARAM_MAX_LEN];
+    char  user_id[PARAM_MAX_LEN];
+    char  bitrate_str[PARAM_MAX_LEN];
+    char  dual_vbr[PARAM_MAX_LEN];
+    char  dual_width[PARAM_MAX_LEN];
+    char  dual_height[PARAM_MAX_LEN];
+    char  dual_flag[PARAM_MAX_LEN];
+
+    int dual_video_bitrate=80000;
+    int dual_video_width=360;
+    int dual_video_height=180; 
+
+    int audio_bitrate_value=50000;
+
+    ngx_flag_t   enable_dual=0;  
+
+    memset(appid,0,PARAM_MAX_LEN);
+    memset(channel,0,PARAM_MAX_LEN);
+    memset(user_id,0,PARAM_MAX_LEN);
+    memset(bitrate_str,0,PARAM_MAX_LEN);
+
+    memset(dual_vbr,0,PARAM_MAX_LEN);
+    memset(dual_width,0,PARAM_MAX_LEN);
+    memset(dual_height,0,PARAM_MAX_LEN);
+
+    memset(dual_flag,0,PARAM_MAX_LEN);
+
+     ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: URL: %s", s->args.data);    
+
+   //parse required arguments
+   //appid
+   if(get_arg_value(s->args,"appid",appid)==0){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: app id: %s",appid);
+   }
+   else{
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: fatal error: could not find app id in the given stream url.");
+      return NULL;
+   }
+
+   //replace forward slash
+   ngx_agora_replace_forward_slash(s,appid);
+
+   //channel
+   if(get_arg_value(s->args,"channel",channel)==0){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: channel: %s",channel);
+   }
+   else{
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: fatal error: could not find channel id in the given stream url.");
+      return NULL;
+   }
+
+   //audio bitrate
+   if(get_arg_value(s->args,"abr",bitrate_str)==0){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: bitrate str: %s",bitrate_str);
+
+       audio_bitrate_value=atoi(bitrate_str);
+   }
+   else{
+
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: default audio bitrate  will be used: %D", audio_bitrate_value);
+   }
+
+   //user id
+    if(get_arg_value(s->args,"uid",user_id)==0){
+        ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: user id: %s",user_id);
+    }
+
+   //dual video bitrate
+   if(get_arg_value(s->args,"dvbr",dual_vbr)==0){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: dual vbr: %s",dual_vbr);
+
+       dual_video_bitrate=atoi(dual_vbr);
+   }
+   else{
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: default dual vbr will be used: %D", dual_video_bitrate);
+   }
+
+   //dual video width
+   if(get_arg_value(s->args,"dwidth",dual_width)==0){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: dual video width: %s",dual_width);
+
+       dual_video_width=atoi(dual_width);
+   }
+   else{
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: default dual video width  will be used: %D", dual_video_width);
+   }
+
+   //dual video height
+   if(get_arg_value(s->args,"dheight",dual_height)==0){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: dual video height: %s",dual_height);
+
+       dual_video_height=atoi(dual_height);
+   }
+   else{
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: default dual video height  will be used: %D", dual_video_height);
+   }
+
+   //dual flag
+   if(get_arg_value(s->args,"dual",dual_flag)==0){
+
+     if(ngx_strncmp(dual_flag, "true", 4)==0){
+	 enable_dual=1;
+     }
+   }
+
+   if(enable_dual){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: dual stream will be ON");
+    }
+   else{
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: default dual streaming will be OFF");
+   }
+
 
    ngx_agora_context_t* ctx=(ngx_agora_context_t*)malloc(sizeof(ngx_agora_context_t));
    if(ctx==NULL){
@@ -789,14 +974,17 @@ ngx_agora_context_t* ngx_agora_init(char* app_id, char* ch_id,char* user_id, ngx
    }
 
    //initialize agora
-   agora_ctx=agora_init(app_id, ch_id,user_id);
+   agora_ctx=agora_init(appid, channel,user_id,enable_dual, dual_video_bitrate, dual_video_width,dual_video_height);
    if(agora_ctx==NULL){
      free(ctx);
      return NULL;
    }
 
+   //set log function
+   agora_set_log_function(agora_ctx, (void*)(s), &agora_log_wrapper);
+
    //initialize audio encoder/decoder
-   audio_context=agora_init_audio(bitrate);
+   audio_context=agora_init_audio(audio_bitrate_value);
    if(audio_context==NULL){
      free(ctx);
      return NULL;
@@ -839,36 +1027,6 @@ char* find_arg_end(char* arg){
    //otherwise we return the last position of the string
    return arg+strlen(arg);
 }
-ngx_int_t parse_args(ngx_str_t args, char* app_id, char* ch_id){
-
-   const char* appid_label="appid";
-   const char* channel_label="channel";
-   char* appid_start_pos=NULL;
-   char* channel_start_pos=NULL;
-
-   char* appid_end_pos=NULL;
-   char* channel_end_pos=NULL;
-
-   appid_start_pos=strstr((char*)args.data,appid_label);
-   channel_start_pos=strstr((char*)args.data, channel_label);
-
-   if(appid_start_pos==NULL || channel_start_pos==NULL){
-      return -1;
-   }   
-
-  appid_end_pos=find_arg_end(appid_start_pos);
-  channel_end_pos=find_arg_end(channel_start_pos);
-
-  //update the exact start position of the values
-  appid_start_pos +=strlen(appid_label)+1;
-  channel_start_pos +=strlen(channel_label)+1;
-
-  //copy appid and channel
-  memcpy(app_id,appid_start_pos, appid_end_pos-appid_start_pos);
-  memcpy(ch_id, channel_start_pos, channel_end_pos-channel_start_pos);
-
-   return 0;
-}
 
 ngx_int_t get_arg_value(ngx_str_t args, const char* key, char* value)
 {
@@ -883,7 +1041,21 @@ ngx_int_t get_arg_value(ngx_str_t args, const char* key, char* value)
    value_start_pos=key_start_pos+strlen(key)+1;
    value_end_pos=find_arg_end(key_start_pos);
 
-    memcpy(value,value_start_pos, value_end_pos-value_start_pos);
+   if(value_end_pos<=value_start_pos){
+      return -1;
+   }
 
-    return 0;
+   memcpy(value,value_start_pos, value_end_pos-value_start_pos);
+
+   return 0;
 }
+
+static void agora_log_wrapper(void* log_ctx, const char* message){
+
+   /* ngx_rtmp_session_t *s=(ngx_rtmp_session_t*)(log_ctx);
+    if(s!=NULL){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0, "agora: %s", message);
+    }*/
+}
+
+

@@ -54,7 +54,14 @@ public:
 	}
 	
   void close(){_condition.notify_all();}
-		
+
+  void clear(){
+      std::unique_lock<std::mutex> lk(_qMutex);
+      while(_workQueue.empty()==false){
+	  _workQueue.pop();
+      }
+  }
+
 private:
 	std::queue<T>                _workQueue;
 	std::condition_variable      _condition;

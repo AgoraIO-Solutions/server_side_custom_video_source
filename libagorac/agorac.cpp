@@ -14,14 +14,18 @@
 #include <string.h>
 #include <chrono>
 
-#include "agoralog.h"
+#include "helpers/agoradecoder.h"
+#include "helpers/agoraencoder.h"
+#include "helpers/agoralog.h"
 
 //agora types
-
 using AgoraVideoSender_ptr=agora::agora_refptr<agora::rtc::IVideoEncodedImageSender>;
 using AgoraAudioSender_ptr=agora::agora_refptr<agora::rtc::IAudioEncodedFrameSender>;
 using AgoraVideoFrameType=agora::rtc::VIDEO_FRAME_TYPE;
 using ConnectionConfig=agora::rtc::RtcConnectionConfiguration;
+
+using AgoraDecoder_ptr=std::shared_ptr<AgoraDecoder>;
+using AgoraEncoder_ptr=std::shared_ptr<AgoraEncoder>;
 
 //a context that group all require info about agora
 struct agora_context_t{
@@ -36,10 +40,13 @@ struct agora_context_t{
   AgoraAudioSender_ptr                             audioSender;
 
 
-  WorkQueue_ptr                                   videoQueue;
+  WorkQueue_ptr                                   videoQueueHigh;
+  WorkQueue_ptr                                   videoQueueLow;
   WorkQueue_ptr                                   audioQueue;
 
-  std::shared_ptr<std::thread>                    videoThread;
+  std::shared_ptr<std::thread>                    videoThreadHigh;
+  std::shared_ptr<std::thread>                    videoThreadLow;
+
   std::shared_ptr<std::thread>                    audioThread;
 
   agora::agora_refptr<agora::rtc::ILocalAudioTrack> audioTrack;
@@ -47,6 +54,14 @@ struct agora_context_t{
 
   bool                                            isRunning;
 
+  AgoraDecoder_ptr                                videoDecoder;
+  AgoraEncoder_ptr                                videoEncoder;
+
+
+  bool                                            encodeNextFrame;
+  bool                                            enable_dual;
+  agora_log_func_t                                log_func;
+  void                                            *log_ctx;
 };
 
 class Work{
@@ -81,10 +96,17 @@ public:
    bool                   is_finished;
    
 };
-  
 
-static void VideoThreadHandler(agora_context_t* ctx);
+//threads
+static void VideoThreadHandlerHigh(agora_context_t* ctx);
+static void VideoThreadHandlerLow(agora_context_t* ctx);
 static void AudioThreadHandler(agora_context_t* ctx);
+
+
+//do not use it before calling agora_init
+void agora_log(agora_context_t* ctx, const char* message){
+   ctx->log_func(ctx->log_ctx, message);
+}
 
 
 //helper function for creating a service
@@ -101,7 +123,9 @@ agora::base::IAgoraService* createAndInitAgoraService(bool enableAudioDevice,
 }
 
 
-agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id){
+agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id,
+		              short enable_dual, unsigned int  dual_vbr, 
+			      unsigned short  dual_width, unsigned short  dual_height){
 
 
   agora_context_t* ctx=new agora_context_t;
@@ -115,6 +139,8 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id){
   ctx->config.channelProfile = agora::CHANNEL_PROFILE_LIVE_BROADCASTING;
   ctx->config.autoSubscribeAudio = false;
   ctx->config.autoSubscribeVideo = false;
+
+  ctx->enable_dual=enable_dual;
 
   // Create Agora service
   ctx->service = createAndInitAgoraService(false, true, true);
@@ -133,17 +159,14 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id){
   // Connect to Agora channel
   auto  connected =  ctx->connection->connect(app_id.c_str(), chanel_id.c_str(), user_id.c_str());
   if (connected) {
-      logMessage("agora NOT connected!");
      delete ctx;
      return NULL;
   }
-  logMessage("agora connected successfully!");
 
 
   // Create media node factory
   auto factory = ctx->service->createMediaNodeFactory();
   if (!factory) {
-    delete ctx;
     return NULL;
   }
 
@@ -152,7 +175,6 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id){
   // Create audio data sender
    ctx->audioSender = factory->createAudioEncodedFrameSender();
   if (!ctx->audioSender) {
-    delete ctx;
     return NULL;
   }
 
@@ -171,47 +193,109 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id){
 
   // Create video track
   agora::base::SenderOptions options;
+  options.ccMode=agora::base::CC_ENABLED;  //for send_dual_h264
   ctx->videoTrack =ctx->service->createCustomVideoTrack(ctx->videoSender,options);
   if (!ctx->videoTrack) {
     return NULL;
   }
+
+  // Set the dual_model
+  agora::rtc::SimulcastStreamConfig Low_streamConfig;
+  ctx->videoTrack->enableSimulcastStream(true, Low_streamConfig);
 
   // Publish audio & video track
   ctx->connection->getLocalUser()->publishAudio(ctx->audioTrack);
   ctx->connection->getLocalUser()->publishVideo(ctx->videoTrack);
 
   ctx->isConnected=1;
-
-  ctx->videoQueue=std::make_shared<WorkQueue <Work_ptr> >();
+  
+  //create queues
+  ctx->videoQueueHigh=std::make_shared<WorkQueue <Work_ptr> >();
   ctx->audioQueue=std::make_shared<WorkQueue <Work_ptr> >();
 
   ctx->isRunning=true;
 
   //start thread handlers
-  ctx->videoThread=std::make_shared<std::thread>(&VideoThreadHandler,ctx);
+  ctx->videoThreadHigh=std::make_shared<std::thread>(&VideoThreadHandlerHigh,ctx);
   ctx->audioThread=std::make_shared<std::thread>(&AudioThreadHandler,ctx);
+ 
+  //is dual streaming is enabled 
+  if(ctx->enable_dual){
+      //create video encoder/decoder
+      ctx->videoDecoder=std::make_shared<AgoraDecoder>();
+      ctx->videoEncoder=std::make_shared<AgoraEncoder>(dual_width,dual_height,dual_vbr);
+      if(!ctx->videoDecoder->init() || ! ctx->videoEncoder->init()){
+         return NULL;
+      }
 
-  logMessage("Agora initialized correctly.");
+      ctx->videoQueueLow=std::make_shared<WorkQueue <Work_ptr> >();
+      ctx->videoThreadLow=std::make_shared<std::thread>(&VideoThreadHandlerLow,ctx);
+  }
+
+  ctx->encodeNextFrame=true;
 
   return ctx;
 }
 
 
-bool doSendVideo(agora_context_t* ctx, const unsigned char* buffer,  unsigned long len,int is_key_frame){
+bool doSendLowVideo(agora_context_t* ctx, const unsigned char* buffer,  unsigned long len,int is_key_frame){
+
+  const uint32_t MAX_FRAME_SIZE=1024*1000;
+  uint8_t transcodingBuffer[MAX_FRAME_SIZE];
+
+  auto frameType=agora::rtc::VIDEO_FRAME_TYPE_DELTA_FRAME;
+  if(is_key_frame){
+     frameType=agora::rtc::VIDEO_FRAME_TYPE_KEY_FRAME;
+  }
+
+
+  //decoder and rencode video here
+  uint32_t trancodingBufferSize=0;
+  ctx->videoDecoder->decode(buffer, len, transcodingBuffer, trancodingBufferSize);
+  auto frame=ctx->videoDecoder->getFrame();
+
+  //check if we need to skip some frames
+  if( ctx->encodeNextFrame==true || is_key_frame){
+    //reencode
+    trancodingBufferSize=0;
+    ctx->videoEncoder->encode(frame, transcodingBuffer, trancodingBufferSize,is_key_frame);
+  
+    agora::rtc::EncodedVideoFrameInfo videoEncodedFrameInfo;
+    videoEncodedFrameInfo.rotation = agora::rtc::VIDEO_ORIENTATION_0;
+    videoEncodedFrameInfo.codecType = agora::rtc::VIDEO_CODEC_H264;
+    videoEncodedFrameInfo.framesPerSecond = 15;
+    videoEncodedFrameInfo.frameType = frameType;
+
+    videoEncodedFrameInfo.streamType = agora::rtc::VIDEO_STREAM_LOW;
+    ctx->videoSender->sendEncodedVideoImage(transcodingBuffer,trancodingBufferSize,videoEncodedFrameInfo);
+  }
+
+  ctx->encodeNextFrame= !ctx->encodeNextFrame;
+
+  return true;
+
+}
+
+bool doSendHighVideo(agora_context_t* ctx, const unsigned char* buffer,  unsigned long len,int is_key_frame){
+
+  const uint32_t MAX_FRAME_SIZE=1024*1000;
+  uint8_t transcodingBuffer[MAX_FRAME_SIZE];
 
   auto frameType=agora::rtc::VIDEO_FRAME_TYPE_DELTA_FRAME; 
   if(is_key_frame){
      frameType=agora::rtc::VIDEO_FRAME_TYPE_KEY_FRAME;
   }
 
-  
   agora::rtc::EncodedVideoFrameInfo videoEncodedFrameInfo;
   videoEncodedFrameInfo.rotation = agora::rtc::VIDEO_ORIENTATION_0;
   videoEncodedFrameInfo.codecType = agora::rtc::VIDEO_CODEC_H264;
   videoEncodedFrameInfo.framesPerSecond = 30;
   videoEncodedFrameInfo.frameType = frameType;
 
+  videoEncodedFrameInfo.streamType = agora::rtc::VIDEO_STREAM_HIGH;
+
   ctx->videoSender->sendEncodedVideoImage(buffer,len,videoEncodedFrameInfo);
+
   return true;
 }
 
@@ -225,35 +309,60 @@ bool doSendAudio(agora_context_t* ctx, const unsigned char* buffer,  unsigned lo
   ctx->audioSender->sendEncodedAudioFrame(buffer,len, audioFrameInfo); 
   return true;
 }
-
-
 int agora_send_video(agora_context_t* ctx,const unsigned char * buffer,  unsigned long len,int is_key_frame){
 
+   logMessage("agora_send_video");
+
    Work_ptr work=std::make_shared<Work>(buffer,len, is_key_frame);
-   ctx->videoQueue->add(work);
+   
+   ctx->videoQueueHigh->add(work);
+   if(ctx->enable_dual){
+      ctx->videoQueueLow->add(work);
+   }
 
    return 0; //no errors
 }
 
-static void VideoThreadHandler(agora_context_t* ctx){
+static void VideoThreadHandlerHigh(agora_context_t* ctx){
 
    while(ctx->isRunning==true){
 
      //wait untill work is available
-     ctx->videoQueue->waitForWork();	  
-     Work_ptr work=ctx->videoQueue->get();
+     ctx->videoQueueHigh->waitForWork();	  
+     Work_ptr work=ctx->videoQueueHigh->get();
      if(work==NULL) continue;
 
      if(work->is_finished==1){
 	break;
      }
 
-     doSendVideo(ctx,work->buffer, work->len, (bool)(work->is_key_frame));
+     doSendHighVideo(ctx,work->buffer, work->len, (bool)(work->is_key_frame));
   }
 
 }
 
+static void VideoThreadHandlerLow(agora_context_t* ctx){
+
+   while(ctx->isRunning==true){
+
+     //wait untill work is available
+     ctx->videoQueueLow->waitForWork();
+     Work_ptr work=ctx->videoQueueLow->get();
+     if(work==NULL) continue;
+
+     if(work->is_finished==1){
+        break;
+     }
+
+     doSendLowVideo(ctx,work->buffer, work->len, (bool)(work->is_key_frame));
+  }
+
+  logMessage("VideoThreadHandlerLow ended");
+
+}
+
 static void AudioThreadHandler(agora_context_t* ctx){
+
    while(ctx->isRunning==true){
 
      //wait untill work is available
@@ -270,45 +379,76 @@ static void AudioThreadHandler(agora_context_t* ctx){
 }
 void agora_disconnect(agora_context_t* ctx){
 
-  logMessage("Agora disconnecting ...");
+   logMessage("start agora disonnect");
 
    ctx->isRunning=true;
    //tell the thread that we are finished
    Work_ptr work=std::make_shared<Work>(nullptr,0, false);
    work->is_finished=true;
 
-   ctx->videoQueue->add(work);
+   ctx->videoQueueHigh->add(work);
+   if(ctx->enable_dual){
+       ctx->videoQueueLow->clear();
+       ctx->videoQueueLow->add(work);
+   }
    ctx->audioQueue->add(work);
+
+   std::this_thread::sleep_for(std::chrono::seconds(2));
 
    ctx->connection->getLocalUser()->unpublishAudio(ctx->audioTrack);
    ctx->connection->getLocalUser()->unpublishVideo(ctx->videoTrack);
 
    bool  isdisconnected=ctx->connection->disconnect();
    if(isdisconnected){
-      logMessage("Agora failed to disconnect!");
       return;
    }
 
+
    ctx->audioSender = nullptr;
    ctx->videoSender = nullptr;
-
    ctx->audioTrack = nullptr;
    ctx->videoTrack = nullptr;
 
+
+   ctx->videoQueueHigh=nullptr;;
+   ctx->videoQueueLow=nullptr;
+   ctx->audioQueue=nullptr;;
+
    //delete context
    ctx->connection=nullptr;
+
+   ctx->service->release();
+   ctx->service = nullptr;
   
-   ctx->videoThread->detach();
+   ctx->videoThreadHigh->detach();
+   if(ctx->enable_dual){
+      ctx->videoThreadLow->detach();
+   }
    ctx->audioThread->detach();
 
+   ctx->videoThreadHigh=nullptr;;
+   ctx->videoThreadLow=nullptr;
+   ctx->audioThread=nullptr; 
 
-   logMessage("Agora disconnected successfully."); 
+   ctx->videoDecoder=nullptr;
+   ctx->videoEncoder=nullptr;
 }
 
 int agora_send_audio(agora_context_t* ctx,const unsigned char * buffer,  unsigned long len){
+
+    logMessage("agora_send_audio");
 
     Work_ptr work=std::make_shared<Work>(buffer,len, 0);
     ctx->audioQueue->add(work);
 
     return 0;
 }
+
+
+void agora_set_log_function(agora_context_t* ctx, agora_log_func_t f, void* log_ctx){
+
+    ctx->log_func=f;
+    ctx->log_ctx=log_ctx;
+}
+
+
