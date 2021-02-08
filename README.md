@@ -31,12 +31,12 @@ It is also possible to perform all the steps below and clean up using ./server_s
       + nginx
       + server_side_custom_video_source
       + nginx-rtmp-module
-      + Agora_Native_SDK_for_Linux_x64_rel.v2.7.1.1_2815_FULL_20201114_0418
+      + custom-ngnix/agora_rtc_sdk
 
 (6) install Agora C wrapper library and AgoraSDK
 
       $ cd server_side_custom_video_source/libagorac
-      $ sudo ./install.sh /home/ubuntu/custom-ngnix/Agora_Native_SDK_for_Linux_x64_rel.v2.7.1.1_2815_FULL_20201114_0418
+      $ sudo ./install.sh /home/ubuntu/custom-ngnix/custom-ngnix/agora_rtc_sdk
       $ cd ..
 
 (7) copy ngx_agora_helper.c and  ngx_agora_helper.h to nginx-rtmp-module

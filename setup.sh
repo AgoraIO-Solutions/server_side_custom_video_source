@@ -29,7 +29,7 @@ git clone https://github.com/nginx/nginx.git
 
 cp -r $1 $2/custom-ngnix
 #cp $1/sdk/agora_linux.zip $2/custom-ngnix
-cp $1/new-sdk/agora_rtc_sdk.zip $2/custom-ngnix
+cp $1/sdk/agora_rtc_sdk.zip $2/custom-ngnix
 unzip $2/custom-ngnix/agora_rtc_sdk
 cd $2/custom-ngnix/server_side_custom_video_source/libagorac
 sudo ./install.sh $2/custom-ngnix/agora_rtc_sdk
