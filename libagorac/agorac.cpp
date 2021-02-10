@@ -1,13 +1,16 @@
-
+#include <stdbool.h>
+#include <fstream>
 #include "agorac.h"
 
 #include <string>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 
 //agora header files
 #include "NGIAgoraRtcConnection.h"
 #include "IAgoraService.h"
+#include "AgoraBase.h"
 
 #include "workqueue.h"
 
@@ -111,49 +114,85 @@ void agora_log(agora_context_t* ctx, const char* message){
 
 //helper function for creating a service
 agora::base::IAgoraService* createAndInitAgoraService(bool enableAudioDevice,
-                                                      bool enableAudioProcessor, bool enableVideo) {
+                                                      bool enableAudioProcessor,
+						      bool enableVideo,
+						      bool enableEncryption, const char* appid) {
   auto service = createAgoraService();
   agora::base::AgoraServiceConfiguration scfg;
   scfg.enableAudioProcessor = enableAudioProcessor;
   scfg.enableAudioDevice = enableAudioDevice;
   scfg.enableVideo = enableVideo;
+  if (enableEncryption) {
+    scfg.appId = appid;
+  }
 
   int ret = service->initialize(scfg);
   return (ret == agora::ERR_OK) ? service : nullptr;
 }
 
 
-agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id,
+#define ENC_KEY_LENGTH        128
+agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, bool enable_enc,
 		              short enable_dual, unsigned int  dual_vbr, 
 			      unsigned short  dual_width, unsigned short  dual_height){
-
 
   agora_context_t* ctx=new agora_context_t;
 
   std::string app_id(in_app_id);
   std::string chanel_id=(in_ch_id);
   std::string user_id(in_user_id);
+  std::string proj_appid = "abcd";
+  char encryptionKey[ENC_KEY_LENGTH] = "";
 
   //set configuration
-  ctx->config.clientRoleType = agora::rtc::CLIENT_ROLE_BROADCASTER;;
+  ctx->config.clientRoleType = agora::rtc::CLIENT_ROLE_BROADCASTER;
   ctx->config.channelProfile = agora::CHANNEL_PROFILE_LIVE_BROADCASTING;
   ctx->config.autoSubscribeAudio = false;
   ctx->config.autoSubscribeVideo = false;
 
   ctx->enable_dual=enable_dual;
+  if (enable_enc) {
+    std::ifstream inf;
+    std::string temp_str;
+    inf.open("/tmp/nginx_agora_appid.txt",std::ifstream::in);
+    if(!inf.is_open()){
+      logMessage("agora Failed to open AppId and key for encryption!");
+    }
+    getline(inf, proj_appid);
+    //logMessage(proj_appid.c_str());
+    getline(inf, temp_str);
+    //logMessage(temp_str.c_str());
+    inf.close();
+    int str_leng = temp_str.copy(encryptionKey, temp_str.length());
+    encryptionKey[str_leng] = '\0';
+  }
 
   // Create Agora service
-  ctx->service = createAndInitAgoraService(false, true, true);
+  ctx->service = createAndInitAgoraService(false, true, true, enable_enc, proj_appid.c_str());
   if (!ctx->service) {
     delete ctx;
     return NULL;
   }
 
-
   ctx->connection =ctx->service->createRtcConnection(ctx->config);
   if (!ctx->connection) {
      delete ctx;
      return NULL;
+  }
+
+  // open the encryption mode
+  if ( ctx->connection && enable_enc) {
+    agora::rtc::EncryptionConfig Config;
+    Config.encryptionMode = agora::rtc::SM4_128_ECB;  //currently only this mode is supported
+    Config.encryptionKey = encryptionKey;
+
+    if (ctx->connection->enableEncryption(true, Config) < 0) {
+      logMessage("agora Failed to enable Encryption!");
+      delete ctx;
+      return NULL;
+    } else {
+      logMessage("agora built-in encryption enabled!");
+    }
   }
 
   // Connect to Agora channel

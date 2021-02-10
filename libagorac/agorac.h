@@ -1,6 +1,6 @@
 #ifndef _AGORA_C_H_
 #define _AGORA_C_H_
-
+#include <stdbool.h>
 #ifdef __cplusplus
  #define EXTERNC extern "C"
  #else
@@ -11,7 +11,7 @@
 
  typedef  void (*agora_log_func_t)(void*, const char*);
 
- EXTERNC agora_context_t*  agora_init(char* app_id, char* ch_id, char* user_id,
+ EXTERNC agora_context_t*  agora_init(char* app_id, char* ch_id, char* user_id, bool enc_enable,
 		                      short enable_dual, unsigned int  dual_vbr, 
 				      unsigned short  dual_width,  unsigned short  dual_height);
 

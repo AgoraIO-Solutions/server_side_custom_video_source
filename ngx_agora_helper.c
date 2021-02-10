@@ -842,6 +842,8 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
     char  channel[PARAM_MAX_LEN];
     char  user_id[PARAM_MAX_LEN];
     char  bitrate_str[PARAM_MAX_LEN];
+    char  encryption_str[2] = "0";
+    ngx_int_t enable_enc = 0;
     char  dual_vbr[PARAM_MAX_LEN];
     char  dual_width[PARAM_MAX_LEN];
     char  dual_height[PARAM_MAX_LEN];
@@ -914,6 +916,13 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
                    "record: user id: %s",user_id);
     }
 
+    //encryption
+    if(get_arg_value(s->args,"enc",encryption_str)==0){
+        ngx_log_error(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
+                   "record: encryption enabled: %s",encryption_str);
+        enable_enc = atoi(encryption_str);
+    }
+
    //dual video bitrate
    if(get_arg_value(s->args,"dvbr",dual_vbr)==0){
        ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
@@ -974,7 +983,7 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
    }
 
    //initialize agora
-   agora_ctx=agora_init(appid, channel,user_id,enable_dual, dual_video_bitrate, dual_video_width,dual_video_height);
+   agora_ctx=agora_init(appid, channel,user_id, enable_enc, enable_dual, dual_video_bitrate, dual_video_width,dual_video_height);
    if(agora_ctx==NULL){
      free(ctx);
      return NULL;
