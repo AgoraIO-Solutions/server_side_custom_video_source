@@ -104,6 +104,14 @@ Publishing RTMP
       uid is the agora user id (optional)
       
       abr is the 'audio bitrate' in bits/second. You should use 50000 for voice applications and 250000 for high definition music
+
+      To enable media encryption, on your server add a file /tmp/nginx_agora_appid.txt. This file should have Agrora App Id and the encryption key. Currently only SM4_128_ECB is supported.
+
+      sample nginx_agora_appid.txt:
+      402xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      12345ABCDx
+
+      add &enc=1 to enable encryption (&enc=0) to disable it (optional)
       
       &end=true is required to terminate the params
 
