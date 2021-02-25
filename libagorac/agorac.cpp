@@ -122,6 +122,7 @@ agora::base::IAgoraService* createAndInitAgoraService(bool enableAudioDevice,
   scfg.enableAudioProcessor = enableAudioProcessor;
   scfg.enableAudioDevice = enableAudioDevice;
   scfg.enableVideo = enableVideo;
+  scfg.useStringUid =true;
   if (enableEncryption) {
     scfg.appId = appid;
   }
