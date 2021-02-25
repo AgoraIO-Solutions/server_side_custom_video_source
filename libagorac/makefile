@@ -2,7 +2,7 @@
 CC = g++  # C compiler
 
 #FLAGS        = -std=c++11  -I${AGORA_SDK_DIR}/lib/linux/agora_media_sdk/low_level_api/include
-FLAGS        = -std=c++11  -I${AGORA_SDK_DIR}/sdk/low_level_api/include
+FLAGS        = -std=c++11  -I${AGORA_SDK_DIR}/agora_sdk/include
 CFLAGS       = -fPIC -g -std=c++11 
 LDFLAGS      = -shared
 

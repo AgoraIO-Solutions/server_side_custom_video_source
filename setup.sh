@@ -27,10 +27,9 @@ cd "$2/custom-ngnix"
 git clone https://github.com/arut/nginx-rtmp-module.git
 git clone https://github.com/nginx/nginx.git
 
-cp -r $1 $2/custom-ngnix
-#cp $1/sdk/agora_linux.zip $2/custom-ngnix
+cp -r $1 $2/custom-ngnix/server_side_custom_video_source
 cp $1/sdk/agora_rtc_sdk.zip $2/custom-ngnix
-unzip $2/custom-ngnix/agora_rtc_sdk
+unzip $2/custom-ngnix/agora_rtc_sdk.zip
 cd $2/custom-ngnix/server_side_custom_video_source/libagorac
 sudo ./install.sh $2/custom-ngnix/agora_rtc_sdk
 cd $2/custom-ngnix/server_side_custom_video_source
@@ -49,7 +48,13 @@ sudo make install
 sudo cp $1/nginx.conf /usr/local/nginx/conf/nginx.conf
 echo "@reboot   $2/custom-ngnix/nginx/objs/nginx;"  | sudo crontab -
 
-
+#creating/updating  binary distribution 
+cd $2/custom-ngnix/server_side_custom_video_source/package
+cp $2/custom-ngnix/nginx/objs/nginx   source/usr/bin/
+cp /usr/local/lib/libagora_rtc_sdk.so source/usr/local/lib/
+cp /usr/local/lib/libagorac.so        source/usr/local/lib/
+dpkg-deb --build source bin/agora-rtmp-stream.deb
+cp bin/agora-rtmp-stream.deb  $1/package/bin/
 
 echo "Clean up"
 rm -f "$2/custom-ngnix/agora_linux.zip"

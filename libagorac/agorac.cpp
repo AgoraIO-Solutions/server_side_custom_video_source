@@ -20,6 +20,7 @@
 #include "helpers/agoradecoder.h"
 #include "helpers/agoraencoder.h"
 #include "helpers/agoralog.h"
+#include <algorithm>
 
 //agora types
 using AgoraVideoSender_ptr=agora::agora_refptr<agora::rtc::IVideoEncodedImageSender>;
@@ -116,13 +117,14 @@ void agora_log(agora_context_t* ctx, const char* message){
 agora::base::IAgoraService* createAndInitAgoraService(bool enableAudioDevice,
                                                       bool enableAudioProcessor,
 						      bool enableVideo,
+						      bool stringUserid,
 						      bool enableEncryption, const char* appid) {
   auto service = createAgoraService();
   agora::base::AgoraServiceConfiguration scfg;
   scfg.enableAudioProcessor = enableAudioProcessor;
   scfg.enableAudioDevice = enableAudioDevice;
   scfg.enableVideo = enableVideo;
-  scfg.useStringUid =true;
+  scfg.useStringUid=stringUserid;
   if (enableEncryption) {
     scfg.appId = appid;
   }
@@ -131,6 +133,11 @@ agora::base::IAgoraService* createAndInitAgoraService(bool enableAudioDevice,
   return (ret == agora::ERR_OK) ? service : nullptr;
 }
 
+bool isNumber(const std::string& userIdString)
+{
+    return !userIdString.empty() && std::find_if(userIdString.begin(), userIdString.end(), [](unsigned char ch)
+		    { return !std::isdigit(ch); }) == userIdString.end();
+}
 
 #define ENC_KEY_LENGTH        128
 agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, bool enable_enc,
@@ -169,7 +176,15 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
   }
 
   // Create Agora service
-  ctx->service = createAndInitAgoraService(false, true, true, enable_enc, proj_appid.c_str());
+  if(isNumber(user_id)){
+      logMessage("numeric  user id: "+ user_id);
+      ctx->service = createAndInitAgoraService(false, true, true,  false, enable_enc, proj_appid.c_str());
+  }
+  else{
+     logMessage("string user id: "+ user_id);
+     ctx->service = createAndInitAgoraService(false, true, true,  true, enable_enc, proj_appid.c_str());
+  }
+
   if (!ctx->service) {
     delete ctx;
     return NULL;

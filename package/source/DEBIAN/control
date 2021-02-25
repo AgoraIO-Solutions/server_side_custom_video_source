@@ -1,0 +1,7 @@
+Package: agora-rtmp-stream
+Architecture: all
+Maintainer: benweekes73@gmail.com
+Priority: optional
+Version: 0.1
+Description: TODO
+Depends: libpcre3,libpcre3-dev,zlib1g,zlib1g-dev,libssl-dev,libavcodec-dev,libavformat-dev,libavutil-dev,libswscale-dev,libx264-dev,nasm,libavfilter-dev,libopus-dev

@@ -1,0 +1,13 @@
+Package: agora-rtmp-stream
+Version: 0.1
+Architecture: all
+Maintainer: benweekes73@gmail.com
+Depends: libpcre3,libpcre3-dev,zlib1g,zlib1g-dev,libssl-dev,libavcodec-dev,libavformat-dev,libavutil-dev,libswscale-dev,libx264-dev,nasm,libavfilter-dev,libopus-dev
+Filename: ./agora-rtmp-stream.deb
+Size: 6580820
+MD5sum: 6f2347f9ca0dde733e178015ac0a8a35
+SHA1: ff83d48ceab89b4c095c43afbcacdd7d330d77f6
+SHA256: ff887517434d1b7a4d48c2f1b8473bca439df6efd5ee16c47abea93fce80b93b
+Priority: optional
+Description: TODO
+

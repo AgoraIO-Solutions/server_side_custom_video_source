@@ -1,0 +1,20 @@
+## This folder contains the files required for the creation and installation of this repo's package
+
+sub folders:
+
+./bin              .deb file and install_package.sh used to install the binary on the user machine
+./source           source files that are required for creating and updating the package
+./create_package.sh  a script that can be used to create a package
+
+
+## create or update the package
+
+ $ cd /your/dir/to/package/bin
+ $ create_package.sh 
+ 
+## installation
+
+ $ cd /your/dir/to/package/bin
+ $ sudo ./install_package.sh
+
+
