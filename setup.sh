@@ -48,14 +48,6 @@ sudo make install
 sudo cp $1/nginx.conf /usr/local/nginx/conf/nginx.conf
 echo "@reboot   $2/custom-ngnix/nginx/objs/nginx;"  | sudo crontab -
 
-#creating/updating  binary distribution 
-cd $2/custom-ngnix/server_side_custom_video_source/package
-cp $2/custom-ngnix/nginx/objs/nginx   source/usr/bin/
-cp /usr/local/lib/libagora_rtc_sdk.so source/usr/local/lib/
-cp /usr/local/lib/libagorac.so        source/usr/local/lib/
-dpkg-deb --build source bin/agora-rtmp-stream.deb
-cp bin/agora-rtmp-stream.deb  $1/package/bin/
-
 echo "Clean up"
 rm -f "$2/custom-ngnix/agora_linux.zip"
 rm -rf "$2/custom-ngnix/server_side_custom_video_source"

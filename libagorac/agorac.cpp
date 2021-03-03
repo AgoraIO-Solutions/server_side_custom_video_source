@@ -176,7 +176,7 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
   }
 
   // Create Agora service
-  if(isNumber(user_id)){
+  if(user_id=="" ||  isNumber(user_id)){
       logMessage("numeric  user id: "+ user_id);
       ctx->service = createAndInitAgoraService(false, true, true,  false, enable_enc, proj_appid.c_str());
   }
