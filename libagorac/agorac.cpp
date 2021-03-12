@@ -432,61 +432,65 @@ static void AudioThreadHandler(agora_context_t* ctx){
      doSendAudio(ctx,work->buffer, work->len);
   }
 }
-void agora_disconnect(agora_context_t* ctx){
+void agora_disconnect(agora_context_t** ctx){
 
    logMessage("start agora disonnect");
 
-   ctx->isRunning=true;
-   //tell the thread that we are finished
-   Work_ptr work=std::make_shared<Work>(nullptr,0, false);
-   work->is_finished=true;
+  auto tempCtx=(*ctx);
 
-   ctx->videoQueueHigh->add(work);
-   if(ctx->enable_dual){
-       ctx->videoQueueLow->clear();
-       ctx->videoQueueLow->add(work);
+  tempCtx->isRunning=false;
+   //tell the thread that we are finished
+    Work_ptr work=std::make_shared<Work>(nullptr,0, false);
+     work->is_finished=true;
+
+   tempCtx->videoQueueHigh->add(work);
+   if(tempCtx->enable_dual){
+       tempCtx->videoQueueLow->clear();
+       tempCtx->videoQueueLow->add(work);
    }
-   ctx->audioQueue->add(work);
+   tempCtx->audioQueue->add(work);
 
    std::this_thread::sleep_for(std::chrono::seconds(2));
 
-   ctx->connection->getLocalUser()->unpublishAudio(ctx->audioTrack);
-   ctx->connection->getLocalUser()->unpublishVideo(ctx->videoTrack);
+   tempCtx->connection->getLocalUser()->unpublishAudio(tempCtx->audioTrack);
+   tempCtx->connection->getLocalUser()->unpublishVideo(tempCtx->videoTrack);
 
-   bool  isdisconnected=ctx->connection->disconnect();
+   bool  isdisconnected=tempCtx->connection->disconnect();
    if(isdisconnected){
       return;
    }
 
 
-   ctx->audioSender = nullptr;
-   ctx->videoSender = nullptr;
-   ctx->audioTrack = nullptr;
-   ctx->videoTrack = nullptr;
+   tempCtx->audioSender = nullptr;
+   tempCtx->videoSender = nullptr;
+   tempCtx->audioTrack = nullptr;
+   tempCtx->videoTrack = nullptr;
 
 
-   ctx->videoQueueHigh=nullptr;;
-   ctx->videoQueueLow=nullptr;
-   ctx->audioQueue=nullptr;;
+   tempCtx->videoQueueHigh=nullptr;;
+   tempCtx->videoQueueLow=nullptr;
+   tempCtx->audioQueue=nullptr;;
 
    //delete context
-   ctx->connection=nullptr;
+   tempCtx->connection=nullptr;
 
-   ctx->service->release();
-   ctx->service = nullptr;
+   tempCtx->service->release();
+   tempCtx->service = nullptr;
   
-   ctx->videoThreadHigh->detach();
-   if(ctx->enable_dual){
-      ctx->videoThreadLow->detach();
+   tempCtx->videoThreadHigh->detach();
+   if(tempCtx->enable_dual){
+      tempCtx->videoThreadLow->detach();
    }
-   ctx->audioThread->detach();
+   tempCtx->audioThread->detach();
 
-   ctx->videoThreadHigh=nullptr;;
-   ctx->videoThreadLow=nullptr;
-   ctx->audioThread=nullptr; 
+   tempCtx->videoThreadHigh=nullptr;;
+   tempCtx->videoThreadLow=nullptr;
+   tempCtx->audioThread=nullptr; 
 
-   ctx->videoDecoder=nullptr;
-   ctx->videoEncoder=nullptr;
+   tempCtx->videoDecoder=nullptr;
+   tempCtx->videoEncoder=nullptr;
+
+   delete (*ctx);
 }
 
 int agora_send_audio(agora_context_t* ctx,const unsigned char * buffer,  unsigned long len){

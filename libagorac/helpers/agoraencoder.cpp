@@ -12,14 +12,20 @@ m_srcWidth(targetWidth),
 m_srcHeight(targetHeight),
 m_targetWidth(targetWidth),
 m_targetHeight(targetHeight),
-m_bitrate(bitRate){
+m_bitrate(bitRate),
+m_scaleContext(nullptr){
 
 }
 
 AgoraEncoder::~AgoraEncoder(){
   if(m_avCodec){
-     //no need to deallocate the frame, we did not allocate data for it
-     //x264_picture_clean(&m_avInputFrame);
+     
+     const int strideCount=3;
+     for (int i = 0; i < strideCount; i++) {
+        m_avInputFrame.img.plane[i]    = 0;
+     } 
+     x264_picture_clean(&m_avInputFrame);
+     
      x264_encoder_close(m_avCodec);
      sws_freeContext(m_scaleContext);
    }     

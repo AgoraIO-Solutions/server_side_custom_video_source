@@ -6,8 +6,10 @@ AgoraDecoder::AgoraDecoder(){
 }
 AgoraDecoder::~AgoraDecoder(){
 
+  avcodec_close(m_avContext);
+
   if (m_avContext != nullptr){
-     av_free(m_avContext);
+    avcodec_free_context(&m_avContext);
   }
 
   if (m_avOutFrame != nullptr) {
@@ -19,8 +21,6 @@ AgoraDecoder::~AgoraDecoder(){
     av_frame_free(&m_avOutFrame);
 #endif
   }
-
-  avcodec_close(m_avContext);
 }
 
 bool AgoraDecoder::init(){
@@ -90,7 +90,7 @@ bool AgoraDecoder::decode(const uint8_t* in, const uint32_t& inSize,
 
   logMessage("start decoding a frame");
 
-  av_new_packet(&m_inputPacket, inSize);
+ //  av_new_packet(&m_inputPacket, inSize);
 
   m_inputPacket.data = ( uint8_t*)in;
   m_inputPacket.size = inSize;

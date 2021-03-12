@@ -414,9 +414,9 @@ ngx_int_t                 len=0;
    keyframe=(ngx_rtmp_get_video_frame_type(in) == NGX_RTMP_VIDEO_KEY_FRAME);     
    len=avcc_to_annexb(s,h,in,&buffer);
 
-   if(keyframe){
+   /*if(keyframe){
       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,"Key frame (rtmp)");
-   }
+   }*/
 
    if(buffer!=NULL){
        agora_send_video(ctx->agora_ctx,  buffer,len,keyframe);
@@ -1015,7 +1015,7 @@ void ngx_agora_disconnect(ngx_agora_context_t** ctx_ptr)
    ctx=(*ctx_ptr);
 
    //disconnect agora
-   agora_disconnect(ctx->agora_ctx);
+   agora_disconnect(&ctx->agora_ctx);
 
    opus_encoder_destroy(ctx->audio_context->opus_encoder);
    avcodec_free_context(&ctx->audio_context->avContext);

@@ -18,7 +18,7 @@
  EXTERNC int  agora_send_video(agora_context_t* ctx,  const unsigned char* buffer,  unsigned long len, int is_key_frame);
  EXTERNC int  agora_send_audio(agora_context_t* ctx,  const unsigned char* buffer,  unsigned long len);
 
- EXTERNC void agora_disconnect(agora_context_t* ctx);
+ EXTERNC void agora_disconnect(agora_context_t** ctx);
 
  EXTERNC void agora_set_log_function(agora_context_t* ctx, agora_log_func_t f, void* log_ctx);
 
