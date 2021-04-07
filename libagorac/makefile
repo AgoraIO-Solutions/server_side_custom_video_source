@@ -12,7 +12,7 @@ DESTDIR?=/usr/local/lib
 all: ${TARGET_LIB}
 
 $(TARGET_LIB): $(OBJS) agorac.cpp 
-	$(CC)  $(FLAGS) ${LDFLAGS} -o $(TARGET_LIB) agorac.cpp helpers/agoradecoder.cpp  helpers/agoraencoder.cpp  helpers/agoralog.cpp  $(CFLAGS)
+	$(CC)  $(FLAGS) ${LDFLAGS} -o $(TARGET_LIB) agorac.cpp helpers/agoradecoder.cpp  helpers/agoraencoder.cpp  helpers/agoralog.cpp userobserver.cpp $(CFLAGS)
 
 clean:
 	rm $(TARGET_LIB)
