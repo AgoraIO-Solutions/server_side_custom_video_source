@@ -59,7 +59,7 @@ bool AgoraEncoder::encode(AVFrame* frame,uint8_t* out, uint32_t& outSize, bool r
 
   if(m_avCodec==nullptr) return false;
 
-  logMessage("start encoding a frame");
+  //logMessage("start encoding a frame");
 
   //dyamically read input from frame res
   if(frame->width!=m_srcWidth || frame->height!=m_srcHeight){
@@ -152,7 +152,7 @@ int AgoraEncoder::handlePostEncoding(uint8_t* out,
 	
 
   if(m_avOutputFrame.i_type ==X264_TYPE_IDR){
-     logMessage("key frame is produced");
+     //logMessage("key frame is produced");
   }
   
   int totalBytes=offset;

@@ -33,6 +33,17 @@ using ConnectionConfig=agora::rtc::RtcConnectionConfiguration;
 using AgoraDecoder_ptr=std::shared_ptr<AgoraDecoder>;
 using AgoraEncoder_ptr=std::shared_ptr<AgoraEncoder>;
 
+//helper stuffs
+using TimePoint=std::chrono::steady_clock::time_point;
+
+static TimePoint Now(){
+   return std::chrono::steady_clock::now();
+}
+
+static long GetTimeDiff(const TimePoint& start, const TimePoint& end){
+  return std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+}
+
 //a context that group all require info about agora
 struct agora_context_t{
 
@@ -69,7 +80,10 @@ struct agora_context_t{
   agora_log_func_t                                log_func;
   void                                            *log_ctx;
 
-  std::shared_ptr<MyUserObserver>                    localUserObserver;
+  std::shared_ptr<MyUserObserver>                 localUserObserver;
+
+  uint8_t                                         fps;
+  TimePoint                                       lastFpsPrintTime;  
 };
 
 class Work{
@@ -116,6 +130,9 @@ void agora_log(agora_context_t* ctx, const char* message){
    ctx->log_func(ctx->log_ctx, message);
 }
 
+std::string GetAddressAsString(agora_context_t* ctx){
+   return std::to_string((long)(ctx))+": ";
+}
 
 //helper function for creating a service
 agora::base::IAgoraService* createAndInitAgoraService(bool enableAudioDevice,
@@ -295,6 +312,9 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
 
   ctx->encodeNextFrame=true;
 
+  ctx->fps=0;
+  ctx->lastFpsPrintTime=Now();
+
   return ctx;
 }
 
@@ -330,7 +350,6 @@ bool doSendLowVideo(agora_context_t* ctx, const unsigned char* buffer,  unsigned
     videoEncodedFrameInfo.streamType = agora::rtc::VIDEO_STREAM_LOW;
     ctx->videoSender->sendEncodedVideoImage(transcodingBuffer,trancodingBufferSize,videoEncodedFrameInfo);
 
-    logMessage("VIDEO: sent a low  frame: is_key_frame="+std::to_string(is_key_frame));
   }
 
   ctx->encodeNextFrame= !ctx->encodeNextFrame;
@@ -358,8 +377,6 @@ bool doSendHighVideo(agora_context_t* ctx, const unsigned char* buffer,  unsigne
 
   ctx->videoSender->sendEncodedVideoImage(buffer,len,videoEncodedFrameInfo);
 
-  logMessage("VIDEO: sent a high  frame: is_key_frame="+std::to_string(is_key_frame));
-
   return true;
 }
 
@@ -372,8 +389,6 @@ bool doSendAudio(agora_context_t* ctx, const unsigned char* buffer,  unsigned lo
 
   ctx->audioSender->sendEncodedAudioFrame(buffer,len, audioFrameInfo);
 
-  logMessage("AUDIO: sent an audio  frame");
-
   return true;
 }
 int agora_send_video(agora_context_t* ctx,const unsigned char * buffer,  unsigned long len,int is_key_frame){
@@ -383,6 +398,18 @@ int agora_send_video(agora_context_t* ctx,const unsigned char * buffer,  unsigne
    ctx->videoQueueHigh->add(work);
    if(ctx->enable_dual){
       ctx->videoQueueLow->add(work);
+   }
+
+   //calculate fps stuffs
+   ctx->fps +=1;
+   if(GetTimeDiff(ctx->lastFpsPrintTime, Now())>=1000){
+
+       logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffer size: " +
+                           std::to_string(ctx->videoQueueHigh->size()) +
+                           ", fps="+std::to_string(ctx->fps));
+
+       ctx->lastFpsPrintTime=Now();
+       ctx->fps=0;
    }
 
    return 0; //no errors
@@ -405,25 +432,69 @@ void waitBeforeNextSend(PacerInfo& pacer) {
   }
 }
 
+static TimePoint GetNextSamplingPoint(agora_context_t* ctx,
+             const long& samplingFrequency, uint8_t& currentFramePerSecond){
+  
+  const size_t MAX_BUFFER_SIZE=4;
+
+  long newSamplingFrequency=samplingFrequency;
+  if(ctx->videoQueueHigh->size()>=MAX_BUFFER_SIZE){
+      newSamplingFrequency = (long)(samplingFrequency*2/3.0);
+  }
+  else if(++currentFramePerSecond>=31){
+	    currentFramePerSecond=0;
+	    newSamplingFrequency +=5;
+  }
+ 
+  TimePoint  nextSample = Now()+std::chrono::milliseconds(newSamplingFrequency);
+  
+   return nextSample;
+}
+
 static void VideoThreadHandlerHigh(agora_context_t* ctx){
 
-   PacerInfo pacer = {0, 1000 / 30,std::chrono::steady_clock::now()};
+   size_t minBufferSize=2;
+
+   std::chrono::steady_clock::time_point  lastSendTime=Now();
+  
+   const uint8_t fps=30;
+
+   bool    waitForBufferToBeFull=true;
+   auto    samplingFrequency=(long)(1000/(float)fps);
+   uint8_t currentFramePerSecond=0;
+
    while(ctx->isRunning==true){
+
+     TimePoint  nextSample = GetNextSamplingPoint(ctx,samplingFrequency, currentFramePerSecond);
+     auto diff=GetTimeDiff(Now(), lastSendTime);
+     if(diff>3*fps){
+	      waitForBufferToBeFull=true;
+     }
+
+     //wait untill the buffer has min buffer size again
+     while(waitForBufferToBeFull==true && ctx->videoQueueHigh->size()<minBufferSize){
+         std::this_thread::sleep_for(std::chrono::milliseconds(samplingFrequency));
+	       logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffering ...");
+         minBufferSize=4;
+     }
+     waitForBufferToBeFull=false;
 
      //wait untill work is available
      ctx->videoQueueHigh->waitForWork();	  
      Work_ptr work=ctx->videoQueueHigh->get();
-     if(work==NULL) continue;
 
-     if(work->is_finished==1){
-	break;
-     }
-
+     if(work==nullptr) continue;
+     if(work->is_finished==1) break;
 
      doSendHighVideo(ctx,work->buffer, work->len, (bool)(work->is_key_frame));
 
-     waitBeforeNextSend(pacer);  // sleep for a while before sending next frame
+     lastSendTime=std::chrono::steady_clock::now();
+
+     //sleep until our next frame time
+     std::this_thread::sleep_until(nextSample);
   }
+
+  logMessage("VideoThreadHandlerHigh ended");
 
 }
 
@@ -448,7 +519,6 @@ static void VideoThreadHandlerLow(agora_context_t* ctx){
   }
 
   logMessage("VideoThreadHandlerLow ended");
-
 }
 
 static void AudioThreadHandler(agora_context_t* ctx){

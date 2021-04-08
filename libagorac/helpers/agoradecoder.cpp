@@ -88,9 +88,7 @@ bool AgoraDecoder::init(){
 bool AgoraDecoder::decode(const uint8_t* in, const uint32_t& inSize, 
                                    uint8_t* out, uint32_t& outSize){
 
-  logMessage("start decoding a frame");
-
- //  av_new_packet(&m_inputPacket, inSize);
+  //logMessage("start decoding a frame");
 
   m_inputPacket.data = ( uint8_t*)in;
   m_inputPacket.size = inSize;
@@ -107,10 +105,7 @@ bool AgoraDecoder::decode(const uint8_t* in, const uint32_t& inSize,
     return false;
   }
 
-  logMessage("end  decoding a frame: "+std::to_string(m_avOutFrame->width)+"x"+std::to_string(m_avOutFrame->height));
-
- //TODO: do not need to copy frame as we pass AVFrame itself
- // outSize=copyDeocodedFrame(m_avOutFrame, out);
+  //logMessage("end  decoding a frame: "+std::to_string(m_avOutFrame->width)+"x"+std::to_string(m_avOutFrame->height));
 
   return true;
 }
