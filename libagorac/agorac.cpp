@@ -94,7 +94,7 @@ public:
 	buffer(nullptr){
   
        if(b==nullptr){
-	  return;
+	       return;
        }
 
        buffer=new unsigned char[l];
@@ -115,7 +115,7 @@ public:
    unsigned long         len;
    bool                  is_key_frame;
 
-   bool                   is_finished;
+   bool                  is_finished;
    
 };
 
@@ -360,9 +360,6 @@ bool doSendLowVideo(agora_context_t* ctx, const unsigned char* buffer,  unsigned
 
 bool doSendHighVideo(agora_context_t* ctx, const unsigned char* buffer,  unsigned long len,int is_key_frame){
 
-  const uint32_t MAX_FRAME_SIZE=1024*1000;
-  uint8_t transcodingBuffer[MAX_FRAME_SIZE];
-
   auto frameType=agora::rtc::VIDEO_FRAME_TYPE_DELTA_FRAME; 
   if(is_key_frame){
      frameType=agora::rtc::VIDEO_FRAME_TYPE_KEY_FRAME;
@@ -495,7 +492,6 @@ static void VideoThreadHandlerHigh(agora_context_t* ctx){
   }
 
   logMessage("VideoThreadHandlerHigh ended");
-
 }
 
 static void VideoThreadHandlerLow(agora_context_t* ctx){
@@ -543,14 +539,14 @@ static void AudioThreadHandler(agora_context_t* ctx){
 }
 void agora_disconnect(agora_context_t** ctx){
 
-   logMessage("start agora disonnect");
+  logMessage("start agora disonnect ...");
 
   auto tempCtx=(*ctx);
 
   tempCtx->isRunning=false;
    //tell the thread that we are finished
     Work_ptr work=std::make_shared<Work>(nullptr,0, false);
-     work->is_finished=true;
+    work->is_finished=true;
 
    tempCtx->videoQueueHigh->add(work);
    if(tempCtx->enable_dual){
@@ -600,6 +596,8 @@ void agora_disconnect(agora_context_t** ctx){
    tempCtx->videoEncoder=nullptr;
 
    delete (*ctx);
+
+   logMessage("Agora disonnected ");
 }
 
 int agora_send_audio(agora_context_t* ctx,const unsigned char * buffer,  unsigned long len){
@@ -609,7 +607,6 @@ int agora_send_audio(agora_context_t* ctx,const unsigned char * buffer,  unsigne
 
     return 0;
 }
-
 
 void agora_set_log_function(agora_context_t* ctx, agora_log_func_t f, void* log_ctx){
 
