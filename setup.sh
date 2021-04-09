@@ -48,6 +48,8 @@ sudo make install
 sudo cp $1/nginx.conf /usr/local/nginx/conf/nginx.conf
 echo "@reboot   $2/custom-ngnix/nginx/objs/nginx;"  | sudo crontab -
 
+cp "$1/rtmpg.conf" "/tmp/rtmpg.conf"
+
 echo "Clean up"
 rm -f "$2/custom-ngnix/agora_linux.zip"
 rm -rf "$2/custom-ngnix/server_side_custom_video_source"

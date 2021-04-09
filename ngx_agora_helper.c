@@ -438,7 +438,21 @@ static void convert_audio_sample_f32_s16(const uint8_t* in, int16_t* out, uint16
    for(int i=0;i<count;i++){
 
       memcpy(&input_32_bit_float, &in[i*src_size],src_size);
-      int16_t out_16_bit_unsigned_int = ((input_32_bit_float ) * 32768) - 1;
+
+     int16_t out_16_bit_unsigned_int=0;
+     if(input_32_bit_float>=1){
+
+         out_16_bit_unsigned_int=32767;
+     } 
+     else if(input_32_bit_float<=-1){
+         
+         out_16_bit_unsigned_int=-32768;
+     } 
+     else{
+         out_16_bit_unsigned_int=((input_32_bit_float ) * 32768) - 1;
+     }    
+
+     // int16_t out_16_bit_unsigned_int = ((input_32_bit_float ) * 32768) - 1;
       memcpy(&out[i], &out_16_bit_unsigned_int,target_size);
    }
 } 
@@ -545,7 +559,37 @@ static ngx_int_t flush_encode_opus(agora_audio_context_t* audio_ctx, uint8_t*out
 
    return 0;
 }
-int decode_acc_audio(ngx_agora_context_t *actx, uint8_t *data, uint16_t input_size){
+
+int calcVol(const int16_t* newPacket, const uint16_t packetLen){
+	
+  uint32_t sum=0;
+
+  for(int i=0;i<packetLen;i++){
+    if(newPacket[i]<0){
+        sum -=newPacket[i];
+    }
+    else{
+        sum +=newPacket[i];
+    }
+  }
+	
+   return sum/(double)packetLen;
+}
+
+int getMax(const int16_t* newPacket, const uint16_t packetLen){
+  
+  int max=newPacket[0];
+  for(int i=1;i<packetLen;i++){
+
+      if(max<newPacket[i]){
+         max=newPacket[i];
+      }
+  }
+
+  return max;
+}
+
+int decode_acc_audio(ngx_agora_context_t *actx,ngx_rtmp_session_t *s, uint8_t *data, uint16_t input_size){
 
 
     AVPacket avPacket;
@@ -583,6 +627,17 @@ int decode_acc_audio(ngx_agora_context_t *actx, uint8_t *data, uint16_t input_si
     int16_t buffer[MAX_CHANNEL_COUNT*INPUT_SAMPLE_COUNT];
     convert_audio_sample_f32_s16(decoded_frame->data[0],buffer, decoded_samples*ctx->channel_count);
 
+    int volume=calcVol(buffer, decoded_samples*ctx->channel_count);
+    int max=getMax(buffer, decoded_samples*ctx->channel_count);
+
+    
+    ///for debugging
+    char log_buffer[1024];
+    snprintf(log_buffer, 1024,  "AUDIO: sample counts: %d, volume: %d, max=%d", 
+                     decoded_samples*ctx->channel_count, volume, max);
+
+    agora_log_message(actx->agora_ctx, log_buffer);
+
     uint8_t  out[1000];
     ngx_int_t encoded_bytes=encode_opus(ctx, buffer, out);
     agora_send_audio(actx->agora_ctx,out, encoded_bytes);
@@ -599,7 +654,7 @@ int decode_acc_audio(ngx_agora_context_t *actx, uint8_t *data, uint16_t input_si
 }
 
 
-static ngx_int_t ngx_flush_audio(ngx_agora_context_t* ctx)
+static ngx_int_t ngx_flush_audio(ngx_rtmp_session_t *s, ngx_agora_context_t* ctx)
 {
     uint16_t buffer_size=0;
     uint16_t sample_count=0;
@@ -611,7 +666,7 @@ static ngx_int_t ngx_flush_audio(ngx_agora_context_t* ctx)
 
     buffer_size= b->last- b->pos;
 
-    sample_count=decode_acc_audio(ctx,b->pos, buffer_size);
+    sample_count=decode_acc_audio(ctx,s,b->pos, buffer_size);
    
     b->pos = b->last = b->start;
 
@@ -738,11 +793,11 @@ ngx_int_t ngx_agora_send_audio(ngx_agora_context_t *ctx,  ngx_rtmp_session_t *s,
     }
 
    if( b->last > b->pos){
-       ngx_flush_audio(ctx);
+       ngx_flush_audio(s,ctx);
     }
 
    if (b->last + size > b->end) {
-         ngx_flush_audio(ctx);
+         ngx_flush_audio(s, ctx);
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
@@ -849,11 +904,15 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
     char  dual_height[PARAM_MAX_LEN];
     char  dual_flag[PARAM_MAX_LEN];
 
+    char  video_jb[PARAM_MAX_LEN];
+
     int dual_video_bitrate=80000;
     int dual_video_width=360;
     int dual_video_height=180; 
 
     int audio_bitrate_value=50000;
+
+    int video_jb_value=4;
 
     ngx_flag_t   enable_dual=0;  
 
@@ -867,6 +926,7 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
     memset(dual_height,0,PARAM_MAX_LEN);
 
     memset(dual_flag,0,PARAM_MAX_LEN);
+    memset(video_jb,0,PARAM_MAX_LEN);
 
      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
                    "record: URL: %s", s->args.data);    
@@ -976,6 +1036,18 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
                    "record: default dual streaming will be OFF");
    }
 
+   //video jb
+   if(get_arg_value(s->args,"jb",video_jb)==0){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: video jb: %s",video_jb);
+
+       video_jb_value=atoi(video_jb);
+   }
+   else{
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: default video JB  will be used: %D", video_jb_value);
+   }
+
 
    ngx_agora_context_t* ctx=(ngx_agora_context_t*)malloc(sizeof(ngx_agora_context_t));
    if(ctx==NULL){
@@ -983,7 +1055,11 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
    }
 
    //initialize agora
-   agora_ctx=agora_init(appid, channel,user_id, enable_enc, enable_dual, dual_video_bitrate, dual_video_width,dual_video_height);
+   agora_ctx=agora_init(appid, channel,user_id, enable_enc, 
+                        enable_dual, dual_video_bitrate,
+                         dual_video_width,dual_video_height,
+                         video_jb_value);
+
    if(agora_ctx==NULL){
      free(ctx);
      return NULL;

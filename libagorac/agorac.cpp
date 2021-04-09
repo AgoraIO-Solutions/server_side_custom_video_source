@@ -7,6 +7,10 @@
 #include <iostream>
 #include <fstream>
 
+#include <string.h>
+#include <chrono>
+#include <algorithm>
+
 //agora header files
 #include "NGIAgoraRtcConnection.h"
 #include "IAgoraService.h"
@@ -14,13 +18,10 @@
 
 #include "workqueue.h"
 
-#include <string.h>
-#include <chrono>
-
 #include "helpers/agoradecoder.h"
 #include "helpers/agoraencoder.h"
 #include "helpers/agoralog.h"
-#include <algorithm>
+#include "helpers/localconfig.h"
 
 #include "userobserver.h"
 
@@ -32,6 +33,8 @@ using ConnectionConfig=agora::rtc::RtcConnectionConfiguration;
 
 using AgoraDecoder_ptr=std::shared_ptr<AgoraDecoder>;
 using AgoraEncoder_ptr=std::shared_ptr<AgoraEncoder>;
+
+using LocalConfig_ptr=std::shared_ptr<LocalConfig>;
 
 //helper stuffs
 using TimePoint=std::chrono::steady_clock::time_point;
@@ -83,7 +86,11 @@ struct agora_context_t{
   std::shared_ptr<MyUserObserver>                 localUserObserver;
 
   uint8_t                                         fps;
-  TimePoint                                       lastFpsPrintTime;  
+  TimePoint                                       lastFpsPrintTime; 
+
+  uint16_t                                         min_video_jb_size; 
+
+  LocalConfig_ptr                                  callConfig;
 };
 
 class Work{
@@ -162,8 +169,9 @@ bool isNumber(const std::string& userIdString)
 
 #define ENC_KEY_LENGTH        128
 agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, bool enable_enc,
-		              short enable_dual, unsigned int  dual_vbr, 
-			      unsigned short  dual_width, unsigned short  dual_height){
+		                         short enable_dual, unsigned int  dual_vbr, 
+			                       unsigned short  dual_width, unsigned short  dual_height,
+                             unsigned short min_video_jb){
 
   agora_context_t* ctx=new agora_context_t;
 
@@ -180,6 +188,16 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
   ctx->config.autoSubscribeVideo = false;
 
   ctx->enable_dual=enable_dual;
+
+
+  //create a local config
+  ctx->callConfig=std::make_shared<LocalConfig>();
+  ctx->callConfig->loadConfig("/tmp/rtmpg.conf");
+  ctx->callConfig->print();
+
+  //ctx->min_video_jb_size=min_video_jb;
+  ctx->min_video_jb_size=ctx->callConfig->getJbSize();
+
   if (enable_enc) {
     std::ifstream inf;
     std::string temp_str;
@@ -399,7 +417,8 @@ int agora_send_video(agora_context_t* ctx,const unsigned char * buffer,  unsigne
 
    //calculate fps stuffs
    ctx->fps +=1;
-   if(GetTimeDiff(ctx->lastFpsPrintTime, Now())>=1000){
+   if(ctx->callConfig->useFpsLog() &&
+      GetTimeDiff(ctx->lastFpsPrintTime, Now())>=1000){
 
        logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffer size: " +
                            std::to_string(ctx->videoQueueHigh->size()) +
@@ -432,10 +451,9 @@ void waitBeforeNextSend(PacerInfo& pacer) {
 static TimePoint GetNextSamplingPoint(agora_context_t* ctx,
              const long& samplingFrequency, uint8_t& currentFramePerSecond){
   
-  const size_t MAX_BUFFER_SIZE=4;
 
   long newSamplingFrequency=samplingFrequency;
-  if(ctx->videoQueueHigh->size()>=MAX_BUFFER_SIZE){
+  if(ctx->videoQueueHigh->size()>=ctx->min_video_jb_size){
       newSamplingFrequency = (long)(samplingFrequency*2/3.0);
   }
   else if(++currentFramePerSecond>=31){
@@ -449,8 +467,6 @@ static TimePoint GetNextSamplingPoint(agora_context_t* ctx,
 }
 
 static void VideoThreadHandlerHigh(agora_context_t* ctx){
-
-   size_t minBufferSize=2;
 
    std::chrono::steady_clock::time_point  lastSendTime=Now();
   
@@ -469,12 +485,16 @@ static void VideoThreadHandlerHigh(agora_context_t* ctx){
      }
 
      //wait untill the buffer has min buffer size again
-     while(waitForBufferToBeFull==true && ctx->videoQueueHigh->size()<minBufferSize){
+     while(waitForBufferToBeFull==true && ctx->videoQueueHigh->size()<ctx->min_video_jb_size){
          std::this_thread::sleep_for(std::chrono::milliseconds(samplingFrequency));
 	       logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffering ...");
-         minBufferSize=4;
      }
      waitForBufferToBeFull=false;
+     if(ctx->callConfig->useDetailedVideoLog()){
+
+        logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffer size: " +
+                           std::to_string(ctx->videoQueueHigh->size()));
+     }
 
      //wait untill work is available
      ctx->videoQueueHigh->waitForWork();	  
@@ -612,6 +632,13 @@ void agora_set_log_function(agora_context_t* ctx, agora_log_func_t f, void* log_
 
     ctx->log_func=f;
     ctx->log_ctx=log_ctx;
+}
+
+void agora_log_message(agora_context_t* ctx, const char* message){
+
+   if(ctx->callConfig->useDetailedAudioLog()){
+      logMessage(std::string(message));
+   }
 }
 
 
