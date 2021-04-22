@@ -6,4 +6,6 @@
 //log a debug message to a file, only in debug mode
 void logMessage(const std::string& message);
 
+void CheckAndRollLogFile();
+
 #endif

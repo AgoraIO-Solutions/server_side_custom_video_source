@@ -87,10 +87,13 @@ struct agora_context_t{
 
   uint8_t                                         fps;
   TimePoint                                       lastFpsPrintTime; 
+  TimePoint                                       lastBufferingTime;
 
-  uint16_t                                         min_video_jb_size; 
+  uint16_t                                        min_video_jb_size; 
 
-  LocalConfig_ptr                                  callConfig;
+  LocalConfig_ptr                                 callConfig;
+
+  uint64_t                                        reBufferingCount;              
 };
 
 class Work{
@@ -173,6 +176,9 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
 			                       unsigned short  dual_width, unsigned short  dual_height,
                              unsigned short min_video_jb){
 
+  //rotate log file if necessary
+  CheckAndRollLogFile();
+
   agora_context_t* ctx=new agora_context_t;
 
   std::string app_id(in_app_id);
@@ -189,10 +195,9 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
 
   ctx->enable_dual=enable_dual;
 
-
   //create a local config
   ctx->callConfig=std::make_shared<LocalConfig>();
-  ctx->callConfig->loadConfig("/tmp/rtmpg.conf");
+  ctx->callConfig->loadConfig("/usr/local/nginx/conf/rtmpg.conf");
   ctx->callConfig->print();
 
   //ctx->min_video_jb_size=min_video_jb;
@@ -332,6 +337,8 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
 
   ctx->fps=0;
   ctx->lastFpsPrintTime=Now();
+  ctx->lastBufferingTime=Now();
+  ctx->reBufferingCount=0;
 
   return ctx;
 }
@@ -453,6 +460,8 @@ static TimePoint GetNextSamplingPoint(agora_context_t* ctx,
   
 
   long newSamplingFrequency=samplingFrequency;
+
+  //if we have more video frames in the queue, decrease sending time a bit
   if(ctx->videoQueueHigh->size()>=ctx->min_video_jb_size){
       newSamplingFrequency = (long)(samplingFrequency*2/3.0);
   }
@@ -466,35 +475,76 @@ static TimePoint GetNextSamplingPoint(agora_context_t* ctx,
    return nextSample;
 }
 
+void CheckAndFillInVideoJb(agora_context_t* ctx, const TimePoint& lastSendTime){
+
+ bool  waitForBufferToBeFull=false;
+ const uint8_t fps=30;
+
+ const int waitTimeForBufferToBeFull=33; //ms
+
+  //check if no frames arrive for 3 seconds. If so, fill the buffer with frames
+  auto diff=GetTimeDiff(lastSendTime, Now());
+  if(diff>3*fps && 
+     ctx->videoQueueHigh->isEmpty()){
+
+	    waitForBufferToBeFull=true;
+  }
+
+  //wait untill the buffer has min buffer size again
+  int waitForBufferingCount=0;
+  while(ctx->isRunning==true &&
+        waitForBufferingCount<200 &&  //should be something wrong happened?
+        waitForBufferToBeFull==true && 
+        ctx->videoQueueHigh->size()<ctx->min_video_jb_size){
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(waitTimeForBufferToBeFull));
+	    logMessage(GetAddressAsString(ctx)+"Video-JB: buffering ("+
+           std::to_string(ctx->videoQueueHigh->size())+") ...");
+
+      waitForBufferingCount++;
+  }
+  
+  if(waitForBufferToBeFull && 
+     ctx->min_video_jb_size<30){  //max 1 sec delay
+
+     //double JB size if the buffer is keeps run out to frquently
+     auto diffBufferingTime=GetTimeDiff(ctx->lastBufferingTime, Now());
+     if(ctx->reBufferingCount>3 &&
+        diffBufferingTime<ctx->callConfig->getDynamicBufferChangeTime()*1000 ){
+
+        ctx->min_video_jb_size += ctx->callConfig->getDynamicBufferChangeFrames();
+        logMessage(GetAddressAsString(ctx)+"Video-JB: JB size increased to "+
+             std::to_string(ctx->min_video_jb_size)+", because it runs out too frequently");
+     }
+
+     ctx->lastBufferingTime=Now();
+     ctx->reBufferingCount++;
+  }
+
+}
+
 static void VideoThreadHandlerHigh(agora_context_t* ctx){
 
-   std::chrono::steady_clock::time_point  lastSendTime=Now();
-  
-   const uint8_t fps=30;
+   TimePoint  lastSendTime=Now();
 
-   bool    waitForBufferToBeFull=true;
+   const uint8_t fps=30;
    auto    samplingFrequency=(long)(1000/(float)fps);
    uint8_t currentFramePerSecond=0;
 
    while(ctx->isRunning==true){
 
      TimePoint  nextSample = GetNextSamplingPoint(ctx,samplingFrequency, currentFramePerSecond);
-     auto diff=GetTimeDiff(Now(), lastSendTime);
-     if(diff>3*fps){
-	      waitForBufferToBeFull=true;
-     }
 
-     //wait untill the buffer has min buffer size again
-     while(waitForBufferToBeFull==true && ctx->videoQueueHigh->size()<ctx->min_video_jb_size){
-         std::this_thread::sleep_for(std::chrono::milliseconds(samplingFrequency));
-	       logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffering ...");
-     }
-     waitForBufferToBeFull=false;
+     //check if we nee to fill JB
+     CheckAndFillInVideoJb(ctx, lastSendTime);
+     
      if(ctx->callConfig->useDetailedVideoLog()){
 
         logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffer size: " +
                            std::to_string(ctx->videoQueueHigh->size()));
      }
+
+     lastSendTime=Now();
 
      //wait untill work is available
      ctx->videoQueueHigh->waitForWork();	  
@@ -504,8 +554,6 @@ static void VideoThreadHandlerHigh(agora_context_t* ctx){
      if(work->is_finished==1) break;
 
      doSendHighVideo(ctx,work->buffer, work->len, (bool)(work->is_key_frame));
-
-     lastSendTime=std::chrono::steady_clock::now();
 
      //sleep until our next frame time
      std::this_thread::sleep_until(nextSample);
@@ -640,5 +688,3 @@ void agora_log_message(agora_context_t* ctx, const char* message){
       logMessage(std::string(message));
    }
 }
-
-

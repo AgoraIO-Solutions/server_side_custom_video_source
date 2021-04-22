@@ -67,6 +67,21 @@ index 13f6677..952b6cb 100644
      ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
                    "publish: name='%s' args='%s' type=%s silent=%d",
                    v.name, v.args, v.type, v.silent);
+diff --git a/ngx_rtmp_cmd_module.h b/ngx_rtmp_cmd_module.h
+index 4a0b955..a8809f5 100644
+--- a/ngx_rtmp_cmd_module.h
++++ b/ngx_rtmp_cmd_module.h
+@@ -14,8 +14,8 @@
+ #include "ngx_rtmp.h"
+ 
+ 
+-#define NGX_RTMP_MAX_NAME           256
+-#define NGX_RTMP_MAX_URL            256
++#define NGX_RTMP_MAX_NAME           512
++#define NGX_RTMP_MAX_URL            512
+ #define NGX_RTMP_MAX_ARGS           NGX_RTMP_MAX_NAME
+ 
+ 
 diff --git a/ngx_rtmp_record_module.c b/ngx_rtmp_record_module.c
 index dc2de12..7d01742 100644
 --- a/ngx_rtmp_record_module.c

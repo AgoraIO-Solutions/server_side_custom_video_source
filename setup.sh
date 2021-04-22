@@ -48,7 +48,7 @@ sudo make install
 sudo cp $1/nginx.conf /usr/local/nginx/conf/nginx.conf
 echo "@reboot   $2/custom-ngnix/nginx/objs/nginx;"  | sudo crontab -
 
-cp "$1/rtmpg.conf" "/tmp/rtmpg.conf"
+cp "$1/rtmpg.conf" "/usr/local/nginx/conf/rtmpg.conf"
 
 echo "Clean up"
 rm -f "$2/custom-ngnix/agora_linux.zip"

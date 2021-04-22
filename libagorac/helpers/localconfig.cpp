@@ -11,7 +11,10 @@ LocalConfig::LocalConfig():
 _useDetailedVideoLog(false),
 _useDetailedAudioLog(false),
 _useFpsLog(false),
-_jbSize(4){
+_jbSize(4),
+_dynamicBufferChangeTime(15),
+_dynamicBufferChangeFrames(16)  //500/30
+{
 
 }
 
@@ -62,6 +65,12 @@ _jbSize(4){
       else if(key=="jb-size"){
          _jbSize=std::atoi(value.c_str());
       }
+      else if(key=="buffer-increase-time"){
+         _dynamicBufferChangeTime=std::atoi(value.c_str());
+      }
+      else if(key=="buffer-increase-frames"){
+         _dynamicBufferChangeFrames=std::atoi(value.c_str());
+      }
   }
 
   //validate user input
@@ -93,6 +102,9 @@ _jbSize(4){
    logMessage("FPS log: "+getStringfromBool(_useFpsLog));
 
    logMessage("JB size: "+std::to_string(_jbSize));
+
+   logMessage("buffer-increase-time: "+std::to_string(_dynamicBufferChangeTime));
+   logMessage("buffer-increase-frames: "+std::to_string(_dynamicBufferChangeFrames));
  }
 
  std::string LocalConfig::getStringfromBool(const bool& flag){
