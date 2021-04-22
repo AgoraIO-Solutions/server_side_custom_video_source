@@ -928,7 +928,12 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
     memset(dual_flag,0,PARAM_MAX_LEN);
     memset(video_jb,0,PARAM_MAX_LEN);
 
-     ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+
+   //terminate argument string with a null char
+    int argLen=s->args.len;
+    s->args.data[argLen]='\0';
+
+    ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
                    "record: URL: %s", s->args.data);    
 
    //parse required arguments
