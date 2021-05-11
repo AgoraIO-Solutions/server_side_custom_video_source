@@ -419,7 +419,7 @@ ngx_int_t                 len=0;
    }*/
 
    if(buffer!=NULL){
-       agora_send_video(ctx->agora_ctx,  buffer,len,keyframe);
+       agora_send_video(ctx->agora_ctx,  buffer,len,keyframe, h->timestamp);
        free(buffer);
 
        return len;

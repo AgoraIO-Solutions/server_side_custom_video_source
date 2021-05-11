@@ -86,6 +86,8 @@ struct agora_context_t{
   std::shared_ptr<MyUserObserver>                 localUserObserver;
 
   uint8_t                                         fps;
+  uint8_t                                         predictedFps;
+
   TimePoint                                       lastFpsPrintTime; 
   TimePoint                                       lastBufferingTime;
 
@@ -93,7 +95,10 @@ struct agora_context_t{
 
   LocalConfig_ptr                                 callConfig;
 
-  uint64_t                                        reBufferingCount;              
+  uint64_t                                        reBufferingCount;    
+
+  long                                            lastFrameTimestamp; 
+  long                                            timestampPerSecond;         
 };
 
 class Work{
@@ -340,6 +345,12 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
   ctx->lastBufferingTime=Now();
   ctx->reBufferingCount=0;
 
+  ctx->lastFrameTimestamp=0; 
+  ctx->timestampPerSecond=0;
+
+  //initially set to 30fps
+  ctx->predictedFps=30;
+
   return ctx;
 }
 
@@ -413,7 +424,11 @@ bool doSendAudio(agora_context_t* ctx, const unsigned char* buffer,  unsigned lo
 
   return true;
 }
-int agora_send_video(agora_context_t* ctx,const unsigned char * buffer,  unsigned long len,int is_key_frame){
+int agora_send_video(agora_context_t* ctx,
+                    const unsigned char * buffer,  
+                    unsigned long len,
+                    int is_key_frame,
+                    long timestamp){
 
    Work_ptr work=std::make_shared<Work>(buffer,len, is_key_frame);
    
@@ -422,17 +437,30 @@ int agora_send_video(agora_context_t* ctx,const unsigned char * buffer,  unsigne
       ctx->videoQueueLow->add(work);
    }
 
+   if(ctx->lastFrameTimestamp!=0){
+
+     auto diff=timestamp-ctx->lastFrameTimestamp;
+     ctx->timestampPerSecond +=diff;
+   }
+   ctx->lastFrameTimestamp=timestamp;
+
    //calculate fps stuffs
    ctx->fps +=1;
    if(ctx->callConfig->useFpsLog() &&
       GetTimeDiff(ctx->lastFpsPrintTime, Now())>=1000){
 
-       logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffer size: " +
+      float averageTimeStamp=ctx->timestampPerSecond/((float)ctx->fps);
+      ctx->predictedFps=(uint8_t)(1000/averageTimeStamp);
+
+      logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffer size: " +
                            std::to_string(ctx->videoQueueHigh->size()) +
-                           ", fps="+std::to_string(ctx->fps));
+                           ", fps="+std::to_string(ctx->fps)+
+                           ", prediected fps="+ std::to_string(ctx->predictedFps));
 
        ctx->lastFpsPrintTime=Now();
        ctx->fps=0;
+
+      ctx->timestampPerSecond=0;
    }
 
    return 0; //no errors
@@ -478,7 +506,7 @@ static TimePoint GetNextSamplingPoint(agora_context_t* ctx,
 void CheckAndFillInVideoJb(agora_context_t* ctx, const TimePoint& lastSendTime){
 
  bool  waitForBufferToBeFull=false;
- const uint8_t fps=30;
+ uint8_t fps=ctx->predictedFps;
 
  const int waitTimeForBufferToBeFull=33; //ms
 
@@ -527,7 +555,7 @@ static void VideoThreadHandlerHigh(agora_context_t* ctx){
 
    TimePoint  lastSendTime=Now();
 
-   const uint8_t fps=30;
+   uint8_t fps=ctx->predictedFps;
    auto    samplingFrequency=(long)(1000/(float)fps);
    uint8_t currentFramePerSecond=0;
 

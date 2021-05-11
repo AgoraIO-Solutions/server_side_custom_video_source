@@ -16,7 +16,11 @@
 				                    unsigned short  dual_width,  unsigned short  dual_height,
 									unsigned short min_video_jb);
 
- EXTERNC int  agora_send_video(agora_context_t* ctx,  const unsigned char* buffer,  unsigned long len, int is_key_frame);
+ EXTERNC int  agora_send_video(agora_context_t* ctx,  
+                               const unsigned char* buffer,  
+							    unsigned long len, 
+								int is_key_frame,
+							    long timestamp);
  EXTERNC int  agora_send_audio(agora_context_t* ctx,  const unsigned char* buffer,  unsigned long len);
 
  EXTERNC void agora_disconnect(agora_context_t** ctx);
