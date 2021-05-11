@@ -16,7 +16,8 @@ sudo ldconfig
 
 #create and copy nginx configs
 sudo mkdir -p /usr/local/nginx/logs/
-sudo cp -r conf /usr/local/nginxi/
+sudo cp -r conf /usr/local/nginx/
+
 
 sudo /usr/bin/nginx -s stop;  sudo /usr/bin/nginx;
 echo "@reboot   /usr/bin/nginx;"  | sudo crontab -
