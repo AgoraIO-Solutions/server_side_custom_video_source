@@ -9,14 +9,14 @@ sudo apt install -y libavcodec-dev libavformat-dev libavutil-dev libswscale-dev 
 sudo apt install -y dpkg
 
 #install binary files
-dpkg -i package/agora-rtmp-stream.deb
+dpkg -i package/bin/agora-rtmp-stream.deb
 
 #configure binray files
 sudo ldconfig
 
 #create and copy nginx configs
 sudo mkdir -p /usr/local/nginx/logs/
-sudo cp -r conf /usr/local/nginx/
+sudo cp -r package/bin/conf /usr/local/nginx/
 
 
 sudo /usr/bin/nginx -s stop;  sudo /usr/bin/nginx;
