@@ -144,6 +144,12 @@ Logging
 Binary Package:
 
   To build the binary package:
+  
+  
+      $ cd server_side_custom_video_source/libagorac
+      $ sudo ./install.sh /home/ubuntu/custom-ngnix/custom-ngnix/agora_rtc_sdk
+      $ cd ..
+      
       $ cd /your/dir/to/server_side_custom_video_source 
       $ sudo ./build.sh 
    please note that the machine in which the build script is run on it should have a rceent build of ngnix  as the script will copy binary from it
