@@ -11,9 +11,9 @@ LocalConfig::LocalConfig():
 _useDetailedVideoLog(false),
 _useDetailedAudioLog(false),
 _useFpsLog(false),
-_jbSize(4),
-_dynamicBufferChangeTime(15),
-_dynamicBufferChangeFrames(16)  //500/30
+_initialJbSize(120),       //in ms
+_maxJbSize(8000),          //in ms
+_timeToIncreaseJbSize(15)  //in seconds
 {
 
 }
@@ -32,6 +32,20 @@ _dynamicBufferChangeFrames(16)  //500/30
    return readConfig(configFile);
  }
 
+ bool LocalConfig::prepareLine(const std::string& in, std::string& out){
+	
+  out=in;
+  
+  //remove comments
+  auto ret=out.find("//");
+  if(ret!=std::string::npos){
+	 out=out.substr(0, ret);
+  }
+  
+  return true;
+}
+
+
  bool LocalConfig::readConfig(std::ifstream& file){
 
   char buffer[1024];
@@ -45,6 +59,8 @@ _dynamicBufferChangeFrames(16)  //500/30
 
       std::string line(buffer);
       line.erase(remove_if(line.begin(), line.end(), isspace), line.end());
+
+      prepareLine(line,line);
 
       //ignore empty lines
       if(line.empty()) continue;
@@ -62,20 +78,20 @@ _dynamicBufferChangeFrames(16)  //500/30
       else if(key=="fps-log" && value=="yes"){
          _useFpsLog=true;
       }
-      else if(key=="jb-size"){
-         _jbSize=std::atoi(value.c_str());
+      else if(key=="jb-initial-size-ms"){
+         _initialJbSize=std::atoi(value.c_str());
       }
-      else if(key=="buffer-increase-time"){
-         _dynamicBufferChangeTime=std::atoi(value.c_str());
+      else if(key=="jb-max-size-ms"){
+         _maxJbSize=std::atoi(value.c_str());
       }
-      else if(key=="buffer-increase-frames"){
-         _dynamicBufferChangeFrames=std::atoi(value.c_str());
+      else if(key=="Jb-max-doubles-if-emptied-within-seconds"){
+         _timeToIncreaseJbSize=std::atoi(value.c_str());
       }
   }
 
   //validate user input
-  if(_jbSize<0 || _jbSize>32){
-      _jbSize=4;  //default
+  if(_initialJbSize<0 || _initialJbSize>8000){
+      _initialJbSize=120;  //default
   }
 
   return true;
@@ -101,10 +117,9 @@ _dynamicBufferChangeFrames(16)  //500/30
    logMessage("Detailed audio log: "+getStringfromBool(_useDetailedAudioLog));
    logMessage("FPS log: "+getStringfromBool(_useFpsLog));
 
-   logMessage("JB size: "+std::to_string(_jbSize));
-
-   logMessage("buffer-increase-time: "+std::to_string(_dynamicBufferChangeTime));
-   logMessage("buffer-increase-frames: "+std::to_string(_dynamicBufferChangeFrames));
+   logMessage("jb-initial-size-ms: "+std::to_string(_initialJbSize));
+   logMessage("jb-max-size-ms: "+std::to_string(_maxJbSize));
+   logMessage("Jb-max-doubles-if-emptied-within-seconds: "+std::to_string(_timeToIncreaseJbSize));
  }
 
  std::string LocalConfig::getStringfromBool(const bool& flag){

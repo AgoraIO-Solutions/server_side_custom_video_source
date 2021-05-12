@@ -10,6 +10,7 @@
 #include <string.h>
 #include <chrono>
 #include <algorithm>
+#include <cmath>
 
 //agora header files
 #include "NGIAgoraRtcConnection.h"
@@ -86,12 +87,12 @@ struct agora_context_t{
   std::shared_ptr<MyUserObserver>                 localUserObserver;
 
   uint8_t                                         fps;
-  uint8_t                                         predictedFps;
+  float                                         predictedFps;
 
   TimePoint                                       lastFpsPrintTime; 
   TimePoint                                       lastBufferingTime;
 
-  uint16_t                                        min_video_jb_size; 
+  uint16_t                                        jb_size; 
 
   LocalConfig_ptr                                 callConfig;
 
@@ -205,8 +206,7 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
   ctx->callConfig->loadConfig("/usr/local/nginx/conf/rtmpg.conf");
   ctx->callConfig->print();
 
-  //ctx->min_video_jb_size=min_video_jb;
-  ctx->min_video_jb_size=ctx->callConfig->getJbSize();
+  ctx->jb_size=ctx->callConfig->getInitialJbSize();
 
   if (enable_enc) {
     std::ifstream inf;
@@ -430,7 +430,9 @@ int agora_send_video(agora_context_t* ctx,
                     int is_key_frame,
                     long timestamp){
 
+   auto     timePerFrame=(1000/(float)ctx->predictedFps);
    Work_ptr work=std::make_shared<Work>(buffer,len, is_key_frame);
+   uint16_t maxFps=200;
    
    ctx->videoQueueHigh->add(work);
    if(ctx->enable_dual){
@@ -450,12 +452,18 @@ int agora_send_video(agora_context_t* ctx,
       GetTimeDiff(ctx->lastFpsPrintTime, Now())>=1000){
 
       float averageTimeStamp=ctx->timestampPerSecond/((float)ctx->fps);
-      ctx->predictedFps=(uint8_t)(1000/averageTimeStamp);
 
-      logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffer size: " +
-                           std::to_string(ctx->videoQueueHigh->size()) +
+      //safty check when  averageTimeStamp is not correct
+      if(averageTimeStamp>1000/maxFps){ 
+        ctx->predictedFps=1000/averageTimeStamp;
+      }
+
+      logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffer size (ms): " +
+                           std::to_string((int)(ctx->videoQueueHigh->size()*timePerFrame)) +
+                            "/"+
+                           std::to_string(ctx->jb_size) +
                            ", fps="+std::to_string(ctx->fps)+
-                           ", prediected fps="+ std::to_string(ctx->predictedFps));
+                           ", predicted fps="+ std::to_string(ctx->predictedFps));
 
        ctx->lastFpsPrintTime=Now();
        ctx->fps=0;
@@ -483,93 +491,135 @@ void waitBeforeNextSend(PacerInfo& pacer) {
   }
 }
 
-static TimePoint GetNextSamplingPoint(agora_context_t* ctx,
-             const long& samplingFrequency, uint8_t& currentFramePerSecond){
+static TimePoint GetNextSamplingPoint(agora_context_t* ctx,uint8_t& currentFramePerSecond){
   
-
-  long newSamplingFrequency=samplingFrequency;
+  //error in fps prediction (in ms)
+  auto   timePerFrame=std::ceil((1000/(float)ctx->predictedFps));
+  auto   samplingFrequency=(long)(timePerFrame);
 
   //if we have more video frames in the queue, decrease sending time a bit
-  if(ctx->videoQueueHigh->size()>=ctx->min_video_jb_size){
-      newSamplingFrequency = (long)(samplingFrequency*2/3.0);
+  if((ctx->videoQueueHigh->size()-1)*timePerFrame>ctx->jb_size){
+
+      samplingFrequency = (long)(samplingFrequency*2/3.0);
+      logMessage(GetAddressAsString(ctx)+"speeding up frame consumption by 1/3: " +
+                   std::to_string((int)(ctx->videoQueueHigh->size()*timePerFrame))+
+                                   "/"+
+                                   std::to_string(ctx->jb_size)
+                 );
   }
-  else if(++currentFramePerSecond>=31){
-	    currentFramePerSecond=0;
-	    newSamplingFrequency +=5;
-  }
- 
-  TimePoint  nextSample = Now()+std::chrono::milliseconds(newSamplingFrequency);
+
+  TimePoint  nextSample = Now()+std::chrono::milliseconds(samplingFrequency);
   
    return nextSample;
 }
 
+void WaitForBuffering(agora_context_t* ctx){
+
+  const uint8_t MAX_ITERATIONS=200;
+  const int     waitTimeForBufferToBeFull=33; //ms
+  auto          timePerFrame=(1000/(float)ctx->predictedFps);
+
+  bool buffered=false;
+
+  //wait untill the buffer has min buffer size again
+  int waitForBufferingCount=0;
+  while(ctx->isRunning==true &&
+        waitForBufferingCount<MAX_ITERATIONS && 
+        (ctx->videoQueueHigh->size()*timePerFrame)<ctx->jb_size){
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(waitTimeForBufferToBeFull));
+	    logMessage(GetAddressAsString(ctx)+"Video-JB: buffering ("+
+                                   std::to_string((int)(ctx->videoQueueHigh->size()*timePerFrame))+
+                                   "/"+
+                                   std::to_string(ctx->jb_size)+
+                                  ") ...");
+
+      waitForBufferingCount++;
+      buffered=true;
+  }
+ 
+  if(buffered){
+    logMessage(GetAddressAsString(ctx)+"Video-JB: ----- end buffering -----");
+  }
+}
+
+void ResizeBuffer(agora_context_t* ctx){
+
+   const uint8_t MAX_REBUFFERING_COUNT=1;  
+
+   //double JB size if the buffer  keeps running out to frquently
+   auto diffBufferingTime=GetTimeDiff(ctx->lastBufferingTime, Now());
+   if(ctx->reBufferingCount>=MAX_REBUFFERING_COUNT &&   //just ignore the first buffering, which might not be real
+        diffBufferingTime<ctx->callConfig->getTimeToIncreaseJbSize()*1000){
+
+        ctx->jb_size = ctx->jb_size*2;
+
+        logMessage(GetAddressAsString(ctx)+"Video-JB: JB size increased to "+
+             std::to_string(ctx->jb_size)+", because it runs out too frequently");
+     }
+
+     ctx->lastBufferingTime=Now();
+     ctx->reBufferingCount++;
+}
+
+/*
+ * buffer size doubling logic;
+     input: jb-initial-size-ms -- intial buffer size in ms
+            jb-max-size-ms     -- max buffer size in ms
+            Jb-max-doubles-if-emptied-within-seconds 
+                 -- time limit where buffer size is doupled if it becomes empty within it
+      logic:
+            jb-size=jb-initial-size-ms
+            while (running)
+               if no frames arrived withing the last 3 seconds and the buffer is empty
+                  set require-buffering=true
+                if require-buffering 
+                   wait for the buffer to be filled up for max 200 iterations 
+                   if last-buffering-time < Jb-max-doubles-if-emptied-within-seconds 
+                                               AND jb-size <jb-max-size-ms
+                       jb-size =jb-size*2
+
+
+ */
 void CheckAndFillInVideoJb(agora_context_t* ctx, const TimePoint& lastSendTime){
 
  bool  waitForBufferToBeFull=false;
- uint8_t fps=ctx->predictedFps;
-
- const int waitTimeForBufferToBeFull=33; //ms
 
   //check if no frames arrive for 3 seconds. If so, fill the buffer with frames
   auto diff=GetTimeDiff(lastSendTime, Now());
-  if(diff>3*fps && 
+  if(diff>3*ctx->predictedFps && 
      ctx->videoQueueHigh->isEmpty()){
 
 	    waitForBufferToBeFull=true;
   }
 
-  //wait untill the buffer has min buffer size again
-  int waitForBufferingCount=0;
-  while(ctx->isRunning==true &&
-        waitForBufferingCount<200 &&  //should be something wrong happened?
-        waitForBufferToBeFull==true && 
-        ctx->videoQueueHigh->size()<ctx->min_video_jb_size){
+  //should wait for the buffer to have min size
+  if(waitForBufferToBeFull==true ){
+      WaitForBuffering(ctx);
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(waitTimeForBufferToBeFull));
-	    logMessage(GetAddressAsString(ctx)+"Video-JB: buffering ("+
-           std::to_string(ctx->videoQueueHigh->size())+") ...");
-
-      waitForBufferingCount++;
+      if(ctx->jb_size<ctx->callConfig->getMaxJbSize()){
+         ResizeBuffer(ctx);
+      }
   }
-  
-  if(waitForBufferToBeFull && 
-     ctx->min_video_jb_size<30){  //max 1 sec delay
-
-     //double JB size if the buffer is keeps run out to frquently
-     auto diffBufferingTime=GetTimeDiff(ctx->lastBufferingTime, Now());
-     if(ctx->reBufferingCount>3 &&
-        diffBufferingTime<ctx->callConfig->getDynamicBufferChangeTime()*1000 ){
-
-        ctx->min_video_jb_size += ctx->callConfig->getDynamicBufferChangeFrames();
-        logMessage(GetAddressAsString(ctx)+"Video-JB: JB size increased to "+
-             std::to_string(ctx->min_video_jb_size)+", because it runs out too frequently");
-     }
-
-     ctx->lastBufferingTime=Now();
-     ctx->reBufferingCount++;
-  }
-
 }
 
 static void VideoThreadHandlerHigh(agora_context_t* ctx){
 
    TimePoint  lastSendTime=Now();
-
-   uint8_t fps=ctx->predictedFps;
-   auto    samplingFrequency=(long)(1000/(float)fps);
    uint8_t currentFramePerSecond=0;
 
    while(ctx->isRunning==true){
 
-     TimePoint  nextSample = GetNextSamplingPoint(ctx,samplingFrequency, currentFramePerSecond);
+     auto   timePerFrame=(1000/(float)ctx->predictedFps);
 
-     //check if we nee to fill JB
+     TimePoint  nextSample = GetNextSamplingPoint(ctx,currentFramePerSecond);
+
+     //check if we need to fill JB
      CheckAndFillInVideoJb(ctx, lastSendTime);
-     
      if(ctx->callConfig->useDetailedVideoLog()){
 
         logMessage(GetAddressAsString(ctx)+"AGORA-JITTER: buffer size: " +
-                           std::to_string(ctx->videoQueueHigh->size()));
+                           std::to_string(ctx->videoQueueHigh->size()*timePerFrame));
      }
 
      lastSendTime=Now();
@@ -592,7 +642,7 @@ static void VideoThreadHandlerHigh(agora_context_t* ctx){
 
 static void VideoThreadHandlerLow(agora_context_t* ctx){
 
-   PacerInfo pacer = {0, 1000 / 30,std::chrono::steady_clock::now()};
+   PacerInfo pacer = {0, (int)(1000 / (float)ctx->predictedFps),std::chrono::steady_clock::now()};
 
    while(ctx->isRunning==true){
 
@@ -615,7 +665,8 @@ static void VideoThreadHandlerLow(agora_context_t* ctx){
 
 static void AudioThreadHandler(agora_context_t* ctx){
 
-   PacerInfo pacer = {0, (int)((1000 /48)*0.95),std::chrono::steady_clock::now()};
+  float const audioSamplingRateKz=48;
+   PacerInfo pacer = {0, (int)((1000 /audioSamplingRateKz)*0.95),std::chrono::steady_clock::now()};
    
    while(ctx->isRunning==true){
 

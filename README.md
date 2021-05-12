@@ -141,4 +141,20 @@ Logging
      log files are in /usr/local/nginx/conf and /tmp for agora logs
      
 
+Binary Package:
+
+  To build the binary package:
+      $ cd /your/dir/to/server_side_custom_video_source 
+      $ sudo ./build.sh 
+   please note that the machine in which the build script is run on it should have a rceent build of ngnix  as the script will copy binary from it
+
+ To install binary on another machine:
+     $ cd /your/dir/to/server_side_custom_video_source
+     $ sudo ./install.sh
+ Start/stop built binary
+    by default ngnix will be started up after ./install.sh, but in case you would like to restart:
+    $ sudo /usr/bin/nginx -s stop;  sudo /usr/bin/nginx; tail -f /usr/local/nginx/logs/error.log 
+     
+
+
 

@@ -16,10 +16,9 @@ class LocalConfig{
    bool     useDetailedAudioLog(){return _useDetailedAudioLog;}
    bool     useFpsLog(){return _useFpsLog;}
 
-   uint8_t  getJbSize(){return _jbSize;}
-
-   uint8_t getDynamicBufferChangeTime(){return _dynamicBufferChangeTime;}
-   uint8_t getDynamicBufferChangeFrames(){return _dynamicBufferChangeFrames;}
+   uint16_t  getInitialJbSize(){return _initialJbSize;}
+   uint16_t  getMaxJbSize(){return _maxJbSize;}
+   uint16_t  getTimeToIncreaseJbSize(){return _timeToIncreaseJbSize;}
 
    void print();
 
@@ -29,16 +28,18 @@ protected:
   bool readConfig(std::ifstream& file);
 
   std::string getStringfromBool(const bool& flag);
+  bool prepareLine(const std::string& in, std::string& out);
 
  private:
 
     bool       _useDetailedVideoLog;
     bool       _useDetailedAudioLog;
     bool       _useFpsLog;
-    uint8_t    _jbSize;
 
-    uint8_t    _dynamicBufferChangeTime;  //in seconds
-    uint8_t    _dynamicBufferChangeFrames;
+    uint16_t    _initialJbSize;
+    uint16_t    _maxJbSize;
+
+    uint16_t    _timeToIncreaseJbSize;
 };
 
 #endif
