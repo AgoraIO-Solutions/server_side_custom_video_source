@@ -144,16 +144,19 @@ Logging
 Binary Package:
 
   To build the binary package:      
+  
       $ cd /your/dir/to/server_side_custom_video_source 
       $ sudo ./build.sh 
       
    Please note: the machine on which the build.sh script is run should have a rceent build of ngnix as the script will copy the binary from it
 
  To install this binary on a fresh machine:
+ 
       $ cd /your/dir/to/server_side_custom_video_source
       $ sudo ./install.sh
      
  Start/stop built binary
+ 
       by default ngnix will be started up after ./install.sh, but in case you would like to restart:
       $ sudo /usr/bin/nginx -s stop;  sudo /usr/bin/nginx; tail -f /usr/local/nginx/logs/error.log 
      
