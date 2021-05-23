@@ -589,7 +589,9 @@ int getMax(const int16_t* newPacket, const uint16_t packetLen){
   return max;
 }
 
-int decode_acc_audio(ngx_agora_context_t *actx,ngx_rtmp_session_t *s, uint8_t *data, uint16_t input_size){
+int decode_acc_audio(ngx_agora_context_t *actx,ngx_rtmp_session_t *s, 
+                                      uint8_t *data, uint16_t input_size,
+                                      ngx_rtmp_header_t *h){
 
 
     AVPacket avPacket;
@@ -640,12 +642,12 @@ int decode_acc_audio(ngx_agora_context_t *actx,ngx_rtmp_session_t *s, uint8_t *d
 
     uint8_t  out[1000];
     ngx_int_t encoded_bytes=encode_opus(ctx, buffer, out);
-    agora_send_audio(actx->agora_ctx,out, encoded_bytes);
+    agora_send_audio(actx->agora_ctx,out, encoded_bytes, h->timestamp);
 
     //flush any remaining bytes in the buffer
     encoded_bytes=flush_encode_opus(ctx,out);
     if(encoded_bytes>0){
-      agora_send_audio(actx->agora_ctx, out, encoded_bytes);
+      agora_send_audio(actx->agora_ctx, out, encoded_bytes, h->timestamp);
     }
 
    av_frame_free(&decoded_frame);
@@ -654,7 +656,7 @@ int decode_acc_audio(ngx_agora_context_t *actx,ngx_rtmp_session_t *s, uint8_t *d
 }
 
 
-static ngx_int_t ngx_flush_audio(ngx_rtmp_session_t *s, ngx_agora_context_t* ctx)
+static ngx_int_t ngx_flush_audio(ngx_rtmp_session_t *s, ngx_agora_context_t* ctx, ngx_rtmp_header_t *h)
 {
     uint16_t buffer_size=0;
     uint16_t sample_count=0;
@@ -666,7 +668,7 @@ static ngx_int_t ngx_flush_audio(ngx_rtmp_session_t *s, ngx_agora_context_t* ctx
 
     buffer_size= b->last- b->pos;
 
-    sample_count=decode_acc_audio(ctx,s,b->pos, buffer_size);
+    sample_count=decode_acc_audio(ctx,s,b->pos, buffer_size, h);
    
     b->pos = b->last = b->start;
 
@@ -793,11 +795,11 @@ ngx_int_t ngx_agora_send_audio(ngx_agora_context_t *ctx,  ngx_rtmp_session_t *s,
     }
 
    if( b->last > b->pos){
-       ngx_flush_audio(s,ctx);
+       ngx_flush_audio(s,ctx,h);
     }
 
    if (b->last + size > b->end) {
-         ngx_flush_audio(s, ctx);
+         ngx_flush_audio(s, ctx, h);
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
@@ -903,6 +905,7 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
     char  dual_width[PARAM_MAX_LEN];
     char  dual_height[PARAM_MAX_LEN];
     char  dual_flag[PARAM_MAX_LEN];
+    char  dual_fps[PARAM_MAX_LEN];
 
     char  video_jb[PARAM_MAX_LEN];
 
@@ -914,6 +917,8 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
 
     int video_jb_value=4;
 
+    int dual_fps_value=15;
+
     ngx_flag_t   enable_dual=0;  
 
     memset(appid,0,PARAM_MAX_LEN);
@@ -924,6 +929,7 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
     memset(dual_vbr,0,PARAM_MAX_LEN);
     memset(dual_width,0,PARAM_MAX_LEN);
     memset(dual_height,0,PARAM_MAX_LEN);
+    memset(dual_fps,0,PARAM_MAX_LEN);
 
     memset(dual_flag,0,PARAM_MAX_LEN);
     memset(video_jb,0,PARAM_MAX_LEN);
@@ -1024,6 +1030,18 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
                    "record: default dual video height  will be used: %D", dual_video_height);
    }
 
+   //dual fps
+   if(get_arg_value(s->args,"dfps",dual_fps)==0){
+       ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: dfps: %s",dual_fps);
+
+       dual_fps_value=atoi(dual_fps);
+   }
+   else{
+      ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0,
+                   "record: default dfps  will be used: %D", dual_fps_value);
+   }
+
    //dual flag
    if(get_arg_value(s->args,"dual",dual_flag)==0){
 
@@ -1063,7 +1081,7 @@ ngx_agora_context_t* ngx_agora_init(ngx_rtmp_session_t *s)
    agora_ctx=agora_init(appid, channel,user_id, enable_enc, 
                         enable_dual, dual_video_bitrate,
                          dual_video_width,dual_video_height,
-                         video_jb_value);
+                         video_jb_value, dual_fps_value);
 
    if(agora_ctx==NULL){
      free(ctx);

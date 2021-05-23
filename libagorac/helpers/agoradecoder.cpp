@@ -85,8 +85,7 @@ bool AgoraDecoder::init(){
   return true;
 }
 
-bool AgoraDecoder::decode(const uint8_t* in, const uint32_t& inSize, 
-                                   uint8_t* out, uint32_t& outSize){
+bool AgoraDecoder::decode(const uint8_t* in, const uint32_t& inSize){
 
   //logMessage("start decoding a frame");
 

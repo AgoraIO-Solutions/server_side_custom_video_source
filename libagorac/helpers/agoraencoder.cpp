@@ -7,13 +7,18 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-AgoraEncoder::AgoraEncoder( const uint16_t& targetWidth, const uint16_t& targetHeight,const uint32_t& bitRate):
+#include "utilities.h"
+
+AgoraEncoder::AgoraEncoder( const uint16_t& targetWidth,
+                      const uint16_t& targetHeight,const uint32_t& bitRate,
+                      const uint16_t& fps):
 m_srcWidth(targetWidth),
 m_srcHeight(targetHeight),
 m_targetWidth(targetWidth),
 m_targetHeight(targetHeight),
 m_bitrate(bitRate),
-m_scaleContext(nullptr){
+m_scaleContext(nullptr),
+_fps(fps){
 
 }
 
@@ -59,12 +64,8 @@ bool AgoraEncoder::encode(AVFrame* frame,uint8_t* out, uint32_t& outSize, bool r
 
   if(m_avCodec==nullptr) return false;
 
-  //logMessage("start encoding a frame");
-
   //dyamically read input from frame res
   if(frame->width!=m_srcWidth || frame->height!=m_srcHeight){
-
-     fprintf(stderr,"agora encoder has been reinitialized!\n");
      onResolutionChange(frame->width, frame->height);
   }
 
@@ -92,7 +93,8 @@ bool AgoraEncoder::encode(AVFrame* frame,uint8_t* out, uint32_t& outSize, bool r
   if (bytes >= 0){
     outSize=handlePostEncoding(out, nalCount, nals,0);
   }
-  
+
+
   //flush delayed frames
   while( x264_encoder_delayed_frames(m_avCodec) ){
      encodedBytes = x264_encoder_encode( m_avCodec, &nals, &nalCount, nullptr, &m_avOutputFrame );
@@ -111,7 +113,7 @@ bool AgoraEncoder::encode(AVFrame* frame,uint8_t* out, uint32_t& outSize, bool r
 
 void AgoraEncoder::initParams(x264_param_t& param){
 
-  const int PACKET_SIZE=1500;
+  const int PACKET_SIZE=1000;
 
   x264_param_default_preset(&param, "veryfast", "zerolatency");
   param.i_csp = X264_CSP_I420;
@@ -120,29 +122,26 @@ void AgoraEncoder::initParams(x264_param_t& param){
     
   param.b_repeat_headers = 1;
   param.i_slice_max_size=PACKET_SIZE;
+  param.b_annexb = 1;
 
-  param.i_fps_num = 15000;
+  param.i_fps_num = _fps*1000;
   param.i_fps_den = 1000;
-  param.i_keyint_max=30*60;
 
-  //set qmin and q max if they are not zero
-  int qMax=0;
-  int qMin=0;
-  
-  if(qMax>0){
+  param.i_keyint_max = _fps*1000;
+  param.b_intra_refresh = 1000;
 
-     param.rc.i_qp_max=qMax;
-  }
-
-  if(qMin>0){
-     param.rc.i_qp_min=qMin;
-  }
-
-  param.rc.i_vbv_buffer_size = param.rc.i_vbv_max_bitrate =
-                               param.rc.i_bitrate=m_bitrate/1000.0;
+  param.i_threads = 1;
 
   //variable rate control
   param.rc.i_rc_method =  X264_RC_ABR;
+
+  //variable rate control
+  param.rc.i_vbv_buffer_size = param.rc.i_vbv_max_bitrate =
+                               param.rc.i_bitrate=m_bitrate/1000.0;
+
+
+  param.i_level_idc = 51;
+  x264_param_apply_profile(&param, "baseline");
 }
 
 int AgoraEncoder::handlePostEncoding(uint8_t* out, 
@@ -151,18 +150,19 @@ int AgoraEncoder::handlePostEncoding(uint8_t* out,
                                      const uint32_t& offset){
 	
 
-  if(m_avOutputFrame.i_type ==X264_TYPE_IDR){
-     //logMessage("key frame is produced");
-  }
+  /*if(m_avOutputFrame.i_type ==X264_TYPE_IDR){
+     logMessage("key frame is produced");
+  }*/
   
-  int totalBytes=offset;
+  int totalBytes=0;
   for(int i=0;i<nalCount;i++){
 
     int iNalSize = nals[i].i_payload;
+
     memcpy(&out[totalBytes], nals[i].p_payload, iNalSize);	  
     totalBytes +=iNalSize;
   }
-  
+
   return totalBytes;
 }
 

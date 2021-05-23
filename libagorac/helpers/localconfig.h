@@ -8,19 +8,22 @@ class LocalConfig{
 
  public:
 
-   LocalConfig();
+  LocalConfig();
 
-   bool loadConfig(const std::string& filePath);
+  bool loadConfig(const std::string& filePath);
 
-   bool     useDetailedVideoLog(){return _useDetailedVideoLog;}
-   bool     useDetailedAudioLog(){return _useDetailedAudioLog;}
-   bool     useFpsLog(){return _useFpsLog;}
+  bool     useDetailedVideoLog(){return _useDetailedVideoLog;}
+  bool     useDetailedAudioLog(){return _useDetailedAudioLog;}
+  bool     useFpsLog(){return _useFpsLog;}
 
-   uint16_t  getInitialJbSize(){return _initialJbSize;}
-   uint16_t  getMaxJbSize(){return _maxJbSize;}
-   uint16_t  getTimeToIncreaseJbSize(){return _timeToIncreaseJbSize;}
+  bool     useSpeedupLog(){return _useSpeedupLog;}
 
-   void print();
+  uint16_t  getInitialJbSize(){return _initialJbSize;}
+  uint16_t  getMaxJbSize(){return _maxJbSize;}
+  uint16_t  getTimeToIncreaseJbSize(){return _timeToIncreaseJbSize;}
+
+
+  void print();
 
 protected:
 
@@ -32,14 +35,15 @@ protected:
 
  private:
 
-    bool       _useDetailedVideoLog;
-    bool       _useDetailedAudioLog;
-    bool       _useFpsLog;
+  bool       _useDetailedVideoLog;
+  bool       _useDetailedAudioLog;
+  bool       _useSpeedupLog;
+  bool       _useFpsLog;
 
-    uint16_t    _initialJbSize;
-    uint16_t    _maxJbSize;
+  uint16_t    _initialJbSize;
+  uint16_t    _maxJbSize;
 
-    uint16_t    _timeToIncreaseJbSize;
+  uint16_t    _timeToIncreaseJbSize;
 };
 
 #endif

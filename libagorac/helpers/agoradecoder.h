@@ -17,8 +17,7 @@ public:
   //initialize the encoder params, should be called before any decoding
   bool init();
 
-  bool decode(const uint8_t* in, const uint32_t& inSize, 
-              uint8_t* out, uint32_t& outSize);
+  bool decode(const uint8_t* in, const uint32_t& inSize);
 
    AVFrame* getFrame(){return m_avOutFrame;}
 protected:

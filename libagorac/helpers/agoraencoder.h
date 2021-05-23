@@ -11,7 +11,10 @@ class AgoraEncoder{
 
 public:
 
-  AgoraEncoder( const uint16_t& targetWidth, const uint16_t& targetHeight,const uint32_t& bitRate=300000);
+  AgoraEncoder( const uint16_t& targetWidth, 
+       const uint16_t& targetHeight,
+       const uint32_t& bitRate=300000,
+       const uint16_t& fps=15);
   ~AgoraEncoder();
 
   bool init();
@@ -45,6 +48,7 @@ private:
   uint32_t         m_bitrate;
 
   SwsContext*      m_scaleContext;
+  uint16_t         _fps;
 };
 
 #endif

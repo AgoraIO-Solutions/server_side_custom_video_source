@@ -10,6 +10,7 @@ std::mutex g_config_file_mutex;
 LocalConfig::LocalConfig():
 _useDetailedVideoLog(false),
 _useDetailedAudioLog(false),
+_useSpeedupLog(false),
 _useFpsLog(false),
 _initialJbSize(120),       //in ms
 _maxJbSize(8000),          //in ms
@@ -78,6 +79,9 @@ _timeToIncreaseJbSize(15)  //in seconds
       else if(key=="fps-log" && value=="yes"){
          _useFpsLog=true;
       }
+      else if(key=="speedup-log" && value=="yes"){
+         _useSpeedupLog=true;
+      }
       else if(key=="jb-initial-size-ms"){
          _initialJbSize=std::atoi(value.c_str());
       }
@@ -87,6 +91,7 @@ _timeToIncreaseJbSize(15)  //in seconds
       else if(key=="Jb-max-doubles-if-emptied-within-seconds"){
          _timeToIncreaseJbSize=std::atoi(value.c_str());
       }
+       
   }
 
   //validate user input

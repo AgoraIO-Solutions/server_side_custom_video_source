@@ -52,6 +52,14 @@ public:
 	int size(){
 		return (int)_workQueue.size();
 	}
+
+	T top(){
+		
+		std::lock_guard<std::mutex> guard(_qMutex);
+		  
+		if(_workQueue.empty()) return nullptr;
+		return _workQueue.front();
+	}
 	
   void close(){_condition.notify_all();}
 
