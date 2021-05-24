@@ -71,10 +71,12 @@ struct agora_context_t{
 
    bool                                            isJbBuffering;   
 
-   uint16_t                                          dfps; 
+   uint16_t                                        dfps; 
 
-   uint8_t                                            highVideoFrameCount;
-   uint8_t                                            lowVideoFrameCount;           
+   uint8_t                                         highVideoFrameCount;
+   uint8_t                                         lowVideoFrameCount;  
+
+   std::string                                     audioDumpFileName;         
 };
 
 class Work{

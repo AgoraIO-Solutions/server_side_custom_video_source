@@ -22,6 +22,10 @@ class LocalConfig{
   uint16_t  getMaxJbSize(){return _maxJbSize;}
   uint16_t  getTimeToIncreaseJbSize(){return _timeToIncreaseJbSize;}
 
+  bool      dumpAudioToFile(){return _dumpAudioToFile;}
+
+  int       getQMin(){return _qMin;}
+  int       getQMax(){return _qMax;}
 
   void print();
 
@@ -44,6 +48,11 @@ protected:
   uint16_t    _maxJbSize;
 
   uint16_t    _timeToIncreaseJbSize;
+
+  bool        _dumpAudioToFile;
+
+  int         _qMin;
+  int         _qMax;
 };
 
 #endif

@@ -21,6 +21,9 @@ public:
 
   bool encode(AVFrame* frame,uint8_t* out, uint32_t& outSize, bool requestKeyFrame);
 
+  void setQMin(int qMin){_qMin=qMin;}
+  void setQMax(int qMax){_qMax=qMax;}
+
 protected:
 
   void initParams(x264_param_t& param);
@@ -49,6 +52,9 @@ private:
 
   SwsContext*      m_scaleContext;
   uint16_t         _fps;
+
+  int              _qMin;
+  int              _qMax;
 };
 
 #endif

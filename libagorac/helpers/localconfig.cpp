@@ -14,7 +14,10 @@ _useSpeedupLog(false),
 _useFpsLog(false),
 _initialJbSize(120),       //in ms
 _maxJbSize(8000),          //in ms
-_timeToIncreaseJbSize(15)  //in seconds
+_timeToIncreaseJbSize(15),  //in seconds
+_dumpAudioToFile(false),
+_qMin(0),
+_qMax(0)
 {
 
 }
@@ -91,7 +94,15 @@ _timeToIncreaseJbSize(15)  //in seconds
       else if(key=="Jb-max-doubles-if-emptied-within-seconds"){
          _timeToIncreaseJbSize=std::atoi(value.c_str());
       }
-       
+      else if(key=="dump-raw-audio-to-file" && value=="yes"){
+         _dumpAudioToFile=true;
+      }
+      else if(key=="qmin"){
+         _qMin=std::atoi(value.c_str());
+      }
+      else if(key=="qmax"){
+         _qMax=std::atoi(value.c_str());
+      }  
   }
 
   //validate user input

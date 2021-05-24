@@ -457,7 +457,6 @@ static void convert_audio_sample_f32_s16(const uint8_t* in, int16_t* out, uint16
    }
 } 
 
-
 agora_audio_context_t*  agora_init_audio(ngx_int_t bitrate){
 
   av_register_all();
@@ -506,7 +505,7 @@ agora_audio_context_t*  agora_init_audio(ngx_int_t bitrate){
    //set FEC
    opus_encoder_ctl(ctx->opus_encoder, OPUS_SET_INBAND_FEC(true));
 
-  return ctx;
+   return ctx;
 }
 
 void get_next_packet(agora_audio_context_t* audio_ctx,  const uint8_t* in,const uint64_t in_length, uint8_t* out)
@@ -627,6 +626,9 @@ int decode_acc_audio(ngx_agora_context_t *actx,ngx_rtmp_session_t *s,
                                                 1);
 
     uint16_t decoded_samples=decoded_frame->nb_samples;
+
+    //dump audio to a file
+    agora_dump_audio_to_file(actx->agora_ctx, decoded_frame->data[0], decoded_samples*ctx->channel_count);
 
     int16_t buffer[MAX_CHANNEL_COUNT*INPUT_SAMPLE_COUNT];
     convert_audio_sample_f32_s16(decoded_frame->data[0],buffer, decoded_samples*ctx->channel_count);

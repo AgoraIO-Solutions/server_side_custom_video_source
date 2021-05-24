@@ -32,6 +32,8 @@
 
  EXTERNC void agora_log_message(agora_context_t* ctx, const char* message);
 
+ EXTERNC void agora_dump_audio_to_file(agora_context_t* ctx, unsigned char* data, short sampleCount);
+
  #undef EXTERNC
 
 

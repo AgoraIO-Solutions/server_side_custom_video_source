@@ -214,6 +214,10 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
       //create video encoder/decoder
       ctx->videoDecoder=std::make_shared<AgoraDecoder>();
       ctx->videoEncoder=std::make_shared<AgoraEncoder>(dual_width,dual_height,dual_vbr, dfps);
+
+      ctx->videoEncoder->setQMin(ctx->callConfig->getQMin());
+      ctx->videoEncoder->setQMax(ctx->callConfig->getQMax());
+
       if(!ctx->videoDecoder->init() || ! ctx->videoEncoder->init()){
          return NULL;
       }
@@ -251,6 +255,7 @@ agora_context_t*  agora_init(char* in_app_id, char* in_ch_id, char* in_user_id, 
 
   ctx->dfps=dfps;
 
+  ctx->audioDumpFileName="/tmp/rtmp_agora_audio_"+std::to_string((long)(ctx))+".raw";
 
   return ctx;
 }
@@ -630,4 +635,15 @@ void agora_log_message(agora_context_t* ctx, const char* message){
    if(ctx->callConfig->useDetailedAudioLog()){
       logMessage(std::string(message));
    }
+}
+
+void agora_dump_audio_to_file(agora_context_t* ctx, unsigned char* data, short sampleCount)
+{
+    if(ctx->callConfig->dumpAudioToFile()==false){
+       return;
+    }
+
+   std::ofstream meidaFile(ctx->audioDumpFileName, std::ios::binary|std::ios::app);	
+   meidaFile.write(reinterpret_cast<const char*>(data), sampleCount*sizeof(float)); 
+   meidaFile.close();
 }

@@ -143,6 +143,17 @@ void AgoraEncoder::initParams(x264_param_t& param){
   param.rc.i_vbv_buffer_size = param.rc.i_vbv_max_bitrate =
                                param.rc.i_bitrate=m_bitrate/1000.0;
 
+  //qmin and qmax
+  if(_qMax>0){
+
+     param.rc.i_qp_max=_qMax;
+  }
+
+  if(_qMin>0){
+     param.rc.i_qp_min=_qMin;
+  }
+
+  logMessage("**** qMin="+std::to_string(_qMin)+", qMax="+std::to_string(_qMax)+"****");
 
   param.i_level_idc = 31;
   x264_param_apply_profile(&param, "baseline");
