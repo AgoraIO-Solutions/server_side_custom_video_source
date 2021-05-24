@@ -113,7 +113,7 @@ bool AgoraEncoder::encode(AVFrame* frame,uint8_t* out, uint32_t& outSize, bool r
 
 void AgoraEncoder::initParams(x264_param_t& param){
 
-  const int PACKET_SIZE=1000;
+  const int PACKET_SIZE=60000;
 
   x264_param_default_preset(&param, "veryfast", "zerolatency");
   param.i_csp = X264_CSP_I420;
@@ -121,8 +121,12 @@ void AgoraEncoder::initParams(x264_param_t& param){
   param.i_height = m_targetHeight;
     
   param.b_repeat_headers = 1;
-  param.i_slice_max_size=PACKET_SIZE;
+  //param.i_slice_max_size=PACKET_SIZE;
   param.b_annexb = 1;
+
+  param.i_slice_max_size = 0;
+  param.i_slice_max_mbs = 0;
+  param.i_slice_count = 0;
 
   param.i_fps_num = _fps*1000;
   param.i_fps_den = 1000;
@@ -140,7 +144,7 @@ void AgoraEncoder::initParams(x264_param_t& param){
                                param.rc.i_bitrate=m_bitrate/1000.0;
 
 
-  param.i_level_idc = 51;
+  param.i_level_idc = 31;
   x264_param_apply_profile(&param, "baseline");
 }
 

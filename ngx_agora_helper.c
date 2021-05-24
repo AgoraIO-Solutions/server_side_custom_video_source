@@ -503,6 +503,9 @@ agora_audio_context_t*  agora_init_audio(ngx_int_t bitrate){
      return NULL;
   }
 
+   //set FEC
+   opus_encoder_ctl(ctx->opus_encoder, OPUS_SET_INBAND_FEC(true));
+
   return ctx;
 }
 
@@ -607,7 +610,6 @@ int decode_acc_audio(ngx_agora_context_t *actx,ngx_rtmp_session_t *s,
     decoded_frame->format=AV_SAMPLE_FMT_S16;
     decoded_frame->channel_layout =ctx->avContext->channel_layout;
     decoded_frame->sample_rate = ctx->avContext->sample_rate;
-
 
     if(avcodec_send_packet(ctx->avContext, &avPacket)!=0){
        return -1;
