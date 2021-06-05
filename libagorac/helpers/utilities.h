@@ -1,7 +1,7 @@
 #ifndef _UTILITIES_H_
 #define _UTILITIES_H_
 
-#include "agoratype.h"
+#include "../agoratype.h"
 
 TimePoint GetNextSamplingPoint(agora_context_t* ctx,
                                 const float& speed,

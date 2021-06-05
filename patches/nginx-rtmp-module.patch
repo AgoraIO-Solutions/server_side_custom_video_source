@@ -34,7 +34,7 @@ index cbe6a93..e903dae 100644
  
  
 diff --git a/ngx_rtmp_cmd_module.c b/ngx_rtmp_cmd_module.c
-index 13f6677..952b6cb 100644
+index 13f6677..844900f 100644
 --- a/ngx_rtmp_cmd_module.c
 +++ b/ngx_rtmp_cmd_module.c
 @@ -179,6 +179,9 @@ ngx_rtmp_cmd_connect_init(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
@@ -55,7 +55,7 @@ index 13f6677..952b6cb 100644
      static ngx_rtmp_publish_t       v;
  
      static ngx_rtmp_amf_elt_t      in_elts[] = {
-@@ -502,6 +506,11 @@ ngx_rtmp_cmd_publish_init(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
+@@ -502,6 +506,13 @@ ngx_rtmp_cmd_publish_init(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
  
      ngx_rtmp_cmd_fill_args(v.name, v.args);
  
@@ -64,6 +64,8 @@ index 13f6677..952b6cb 100644
 +        agora_rand_key=rand()%150000000;
 +        ngx_sprintf(v.name, "agora-stream-key%d",agora_rand_key,10);
 +    }
++    ngx_log_error(NGX_LOG_NOTICE, s->connection->log, 0, "streaming key: %s",v.name);
++
      ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
                    "publish: name='%s' args='%s' type=%s silent=%d",
                    v.name, v.args, v.type, v.silent);

@@ -1,7 +1,7 @@
 #ifndef _CONTEXT_H_
 #define _CONTEXT_H_
 
-#include "agoratype.h"
+#include "../agoratype.h"
 
 using AgoraVideoSender_ptr=agora::agora_refptr<agora::rtc::IVideoEncodedImageSender>;
 using AgoraAudioSender_ptr=agora::agora_refptr<agora::rtc::IAudioEncodedFrameSender>;

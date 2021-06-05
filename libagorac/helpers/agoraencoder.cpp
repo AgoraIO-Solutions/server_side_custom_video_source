@@ -140,8 +140,7 @@ void AgoraEncoder::initParams(x264_param_t& param){
   param.rc.i_rc_method =  X264_RC_ABR;
 
   //variable rate control
-  param.rc.i_vbv_buffer_size = param.rc.i_vbv_max_bitrate =
-                               param.rc.i_bitrate=m_bitrate/1000.0;
+  param.rc.i_vbv_buffer_size = param.rc.i_vbv_max_bitrate =param.rc.i_bitrate=m_bitrate/1000.0;
 
   //qmin and qmax
   if(_qMax>0){

@@ -7,7 +7,7 @@
 #include <cmath>
 #include <memory>
 
-#include "../workqueue.h"
+#include "workqueue.h"
 
 class AgoraDecoder;
 using AgoraDecoder_ptr=std::shared_ptr<AgoraDecoder>;

@@ -22,7 +22,7 @@
 #include "helpers/context.h"
 
 #include "helpers/utilities.h"
-#include "helpers/agoratype.h"
+#include "agoratype.h"
 #include "helpers/agoraconstants.h"
 
 
