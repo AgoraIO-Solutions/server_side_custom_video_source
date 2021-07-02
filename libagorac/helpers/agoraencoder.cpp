@@ -152,6 +152,9 @@ void AgoraEncoder::initParams(x264_param_t& param){
      param.rc.i_qp_min=_qMin;
   }
 
+  //TODO: we may change this to X264_LOG_DEBUG when debugging issues
+  param.i_log_level = X264_LOG_ERROR;
+
   logMessage("**** qMin="+std::to_string(_qMin)+", qMax="+std::to_string(_qMax)+"****");
 
   param.i_level_idc = 31;

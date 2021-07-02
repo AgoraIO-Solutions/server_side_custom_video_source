@@ -1,20 +1,13 @@
-## This folder contains the files required for the creation and installation of this repo's package
+## install the binary backage
 
-sub folders:
+$ sudo install.sh
 
-./bin              .deb file and install_package.sh used to install the binary on the user machine
-./source           source files that are required for creating and updating the package
-./create_package.sh  a script that can be used to create a package
-
-
-## create or update the package
-
- $ cd /your/dir/to/package/bin
- $ create_package.sh 
- 
-## installation
-
- $ cd /your/dir/to/package/bin
- $ sudo ./install_package.sh
+Please note that this step will create a backup of the  previous installation. 
+Backup files will be put at the current directly with today's date
 
 
+## recover ngnix using a backup
+
+if you would like to recover a previoulsy backed up version, you can execute:
+
+$ ./recover.sh /path/to/backup/dir
