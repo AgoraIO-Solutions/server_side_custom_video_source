@@ -93,6 +93,44 @@ The NGINX recording module will now convert an inbound RTMP bitstream and send t
 
 No recordings will be written to disk but it was still necessary to create the folder /tmp/rec and give it read/write permission
 
+## Install a development version of this repo
+
+ $ cd /your/dir/to/server_side_custom_video_source
+ $ sudo ./setup.sh /path/to/this/repo /path/to/build/at 
+
+ Example:
+ $ ./setup.sh /home/ubuntu/server_side_custom_video_source /home/ubuntu
+
+## Build a binary distribution package 
+
+  Build a binary distribution package by following these steps:
+
+   $ cd /your/dir/to/server_side_custom_video_source
+   $ sudo ./build.sh
+
+   This will create dist-agora-rtmp.tar.gz which you can use to install the RTMPG on another server
+
+## Install a binary distribution package 
+
+  Copy dist-agora-rtmp.tar.gz to the server and run the following:
+
+  (1) extract  the binary distribution package
+
+    $tar -xvzf dist-agora-rtmp.tar.gz 
+    $cd dist-agora-rtmp
+
+  (2) backup and install the binary package
+
+    $ sudo ./install.sh
+
+    This will collect the important files from previous installation and put them in ngnix-bk-xx, where xx is the installation date. 
+    You can recover that later with the following:
+
+   (3) recover prevous installation
+
+    $ ./recover.sh /path/to/backup/dir
+
+
 Publishing RTMP
 
       Set the RTMP URI to rtmp://server_ip:1935/live?appid=APP_ID_OR_TOKEN&channel=CHANNEL&uid=USER_ID&abr=50000&end=true
