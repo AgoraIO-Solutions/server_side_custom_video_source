@@ -123,12 +123,12 @@ After cloning the project into your current folder
 
 ## Binary Creation, Distribution & Installation <a name="binary"></a>
 
-  Build a binary distribution package by following these steps:
+Build a binary distribution package by following these steps:
 
-   $ cd /your/dir/to/server_side_custom_video_source
-   $ sudo ./build.sh
+      $ cd /your/dir/to/server_side_custom_video_source
+      $ sudo ./build.sh
 
-   This will create dist-agora-rtmp.tar.gz which you can use to install the RTMPG on another server
+This will create dist-agora-rtmp.tar.gz which you can use to install the RTMPG on another server
 
 ## Install a binary distribution package 
 
@@ -136,19 +136,19 @@ After cloning the project into your current folder
 
   (1) extract the binary distribution package
 
-    $tar -xvzf dist-agora-rtmp.tar.gz 
-    $cd dist-agora-rtmp
+      $ tar -xvzf dist-agora-rtmp.tar.gz 
+      $ cd dist-agora-rtmp
 
   (2) backup and install the binary package
 
-    $ sudo ./install.sh
+      $ sudo ./install.sh
 
-    This will collect the important files from previous installation and put them in ngnix-bk-xx, where xx is the installation date. 
-    You can recover that later with the following:
+ This will collect the important files from previous installation and put them in ngnix-bk-xx, where xx is the installation date. 
+ You can recover that later with the following:
 
    (3) recover prevous installation
 
-    $ ./recover.sh /path/to/backup/dir
+      $ ./recover.sh /path/to/backup/dir
 
 ## Usage <a name="Usage"></a>
 
@@ -189,11 +189,23 @@ https://agoraio-community.github.io/AgoraWebSDK-NG/demo/basicVideoCall/index.htm
 You can share the following usage instructions with customers:
 https://tinyurl.com/rtmp2agora     
      
-Logging 
+## Config 
+
      Log level is set in /usr/local/nginx/conf/nginx.conf
      default is 
      error_log logs/error.log notice;
      Can change notice to debug and then restart with 
          sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx -s stop;  sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx 
      log files are in /usr/local/nginx/conf and /tmp for agora logs
+     
+     
+## Logging 
+
+     Log level is set in /usr/local/nginx/conf/nginx.conf
+     default is 
+     error_log logs/error.log notice;
+     Can change notice to debug and then restart with 
+         sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx -s stop;  sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx 
+     log files are in /usr/local/nginx/conf and /tmp for agora logs
+     
      
