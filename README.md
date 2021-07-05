@@ -121,7 +121,7 @@ After cloning the project into your current folder
       $ make
 
 
-## Binary Creation, Distribution & Installation <a name="binary"></a>
+## Binary creation, distribution & installation <a name="binary"></a>
 
 Build a binary distribution package by following these steps:
 
