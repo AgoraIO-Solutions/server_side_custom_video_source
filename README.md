@@ -1,9 +1,8 @@
 
+1. [ Description. ](#desc)
+
 ## Build a binary distribution package  (#desc)
 
-# Build a binary distribution package (#desc)
-
-### Build a binary distribution package (#desc)
 
 This project extends the NGINX RTMP module, enabling it to publish RTMP audio and video directly into an Agora channel.
 
