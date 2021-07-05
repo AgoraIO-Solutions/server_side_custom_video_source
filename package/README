@@ -1,13 +1,11 @@
-## install the binary backage
+## to install, please run:
 
-$ sudo install.sh
+$ sudo ./install.sh
 
-Please note that this step will create a backup of the  previous installation. 
-Backup files will be put at the current directly with today's date
-
+This will backup any current installation into the current directory
 
 ## recover ngnix using a backup
 
-if you would like to recover a previoulsy backed up version, you can execute:
+If you would like to recover a previously backed up version, you can run:
 
 $ ./recover.sh /path/to/backup/dir
