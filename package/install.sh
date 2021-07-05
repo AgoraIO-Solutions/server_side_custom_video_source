@@ -3,6 +3,7 @@
 # this package installs a binary distribution of agora rtmp module
 
 #install required libraries
+sudo apt update
 sudo apt install -y libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev unzip
 sudo apt install -y libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libx264-dev nasm libavfilter-dev libopus-dev
 

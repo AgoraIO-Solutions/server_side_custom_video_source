@@ -51,6 +51,6 @@ echo "@reboot   $2/custom-ngnix/nginx/objs/nginx;"  | sudo crontab -
 sudo cp "$1/rtmpg.conf" "/usr/local/nginx/conf/rtmpg.conf"
 
 echo "Clean up"
-rm -f "$2/custom-ngnix/agora_linux.zip"
-rm -rf "$2/custom-ngnix/server_side_custom_video_source"
-rm -rf "$2/custom-ngnix/nginx-rtmp-module"
+#rm -f "$2/custom-ngnix/agora_linux.zip"
+#rm -rf "$2/custom-ngnix/server_side_custom_video_source"
+#rm -rf "$2/custom-ngnix/nginx-rtmp-module"
