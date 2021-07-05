@@ -35,6 +35,9 @@ sudo ldconfig
 sudo mkdir -p /usr/local/nginx/logs/
 sudo cp -r package/bin/conf /usr/local/nginx/
 
+if [ -d "/usr/local/nginx/logs/nginx.pid" ]; then
+  sudo /usr/bin/nginx -s stop; 
+fi
 
-sudo /usr/bin/nginx -s stop;  sudo /usr/bin/nginx;
+sudo /usr/bin/nginx;
 echo "@reboot   /usr/bin/nginx;"  | sudo crontab -

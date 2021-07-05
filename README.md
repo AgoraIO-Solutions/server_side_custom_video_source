@@ -1,11 +1,21 @@
-This project extends the NGINX RTMP module, enabling it to publish RTMP audio and video directly into an Agora channel.
+
+1. [Overview](#overview)
+2. [Development Setup](#develop)
+3. [Binary Creation, Distribution & Installation](#binary)
+4. [Usage](#usage)
+
+## Overview <a name="overview"></a>
+This project extends the NGINX RTMP module, enabling it to publish RTMP audio and video directly into an Agora channel using the Agora Linux SDK. 
+We refer to this product as the RTMP Gateway or RTMPG. It is has been well used in production by some customers with OBS and Vmix. It supports Dual Stream such that a single RTMP stream can result in a low and high quality stream available on Agora.
 
 For more information on the NGINX RTMP module see 
       https://www.nginx.com/blog/video-streaming-for-remote-learning-with-nginx/
-
+      
+      
+## Development Setup <a name="develop"></a>
 The following steps assume you are using Ubuntu and have been verified with Ubuntu 18.04 on an AWS t3.medium instance where the publication of a single RTMP stream consumed less than 10% of one CPU core. 
 
-It is also possible to perform all the steps below and clean up using ./server_side_custom_video_source/setup.sh after cloning this repo. 
+It is also possible to perform all of the steps below using ./server_side_custom_video_source/setup.sh after cloning this repo. 
 
 (1) install the required libs
 
@@ -93,47 +103,58 @@ The NGINX recording module will now convert an inbound RTMP bitstream and send t
 
 No recordings will be written to disk but it was still necessary to create the folder /tmp/rec and give it read/write permission
 
-## Install a development version of this repo
+### Install a development version using the setup.sh script
 
- $ cd /your/dir/to/server_side_custom_video_source
- $ sudo ./setup.sh /path/to/this/repo /path/to/build/at 
+setup.sh will perform all of the above but will also delete the source code once built.
+To avoid deleting the source code so you can make changes and rebuild, just comment the last 3 lines (which begin with 'rm') in setup.sh which perform the deletes.
+After cloning the project into your current folder
 
- Example:
- $ ./setup.sh /home/ubuntu/server_side_custom_video_source /home/ubuntu
+      $ cd server_side_custom_video_source
+      $ sudo ./setup.sh /path/to/the/current/folder /path/to/build/at 
 
-## Build a binary distribution package 
+      Example:
+      $ ./setup.sh /home/ubuntu/server_side_custom_video_source /home/ubuntu
+      
+      To build you can do this:
+      $ cd /home/ubuntu/custom-ngnix/nginx
+      $ ./auto/configure --add-module=../nginx-rtmp-module 
+      $ make
 
-  Build a binary distribution package by following these steps:
 
-   $ cd /your/dir/to/server_side_custom_video_source
-   $ sudo ./build.sh
+## Binary creation, distribution & installation <a name="binary"></a>
 
-   This will create dist-agora-rtmp.tar.gz which you can use to install the RTMPG on another server
+Build a binary distribution package by following these steps:
+
+      $ cd /your/dir/to/server_side_custom_video_source
+      $ sudo ./build.sh
+
+This will create dist-agora-rtmp.tar.gz which you can use to install the RTMPG on another server
 
 ## Install a binary distribution package 
 
-  Copy dist-agora-rtmp.tar.gz to the server and run the following:
+  Copy dist-agora-rtmp.tar.gz to the destination server and run the following:
 
-  (1) extract  the binary distribution package
+  (1) extract the binary distribution package
 
-    $tar -xvzf dist-agora-rtmp.tar.gz 
-    $cd dist-agora-rtmp
+      $ tar -xvzf dist-agora-rtmp.tar.gz 
+      $ cd dist-agora-rtmp
 
   (2) backup and install the binary package
 
-    $ sudo ./install.sh
+      $ sudo ./install.sh
 
-    This will collect the important files from previous installation and put them in ngnix-bk-xx, where xx is the installation date. 
-    You can recover that later with the following:
+ This will collect the important files from previous installation and put them in ngnix-bk-xx, where xx is the installation date. 
+ You can recover that later with the following:
 
    (3) recover prevous installation
 
-    $ ./recover.sh /path/to/backup/dir
+      $ ./recover.sh /path/to/backup/dir
 
+## Usage <a name="Usage"></a>
 
 Publishing RTMP
 
-      Set the RTMP URI to rtmp://server_ip:1935/live?appid=APP_ID_OR_TOKEN&channel=CHANNEL&uid=USER_ID&abr=50000&end=true
+      Set the RTMP URI to rtmp://server_ip:1935/live?appid=APP_ID_OR_TOKEN&channel=CHANNEL&uid=USER_ID&abr=50000
       
       appid can contain either the Agora App Id or an Agora Authentication Token
       
@@ -151,7 +172,6 @@ Publishing RTMP
 
       add &enc=1 to enable encryption (&enc=0) to disable it (optional)
       
-      &end=true is required to terminate the params
 
 Using OBS
 
@@ -163,18 +183,29 @@ Using OBS
 You can now start streaming from OBS into Agora
 
 You can view the stream inside Agora using the simple web demo here and setting the relevant appId and channel
+https://agoraio-community.github.io/AgoraWebSDK-NG/demo/basicVideoCall/index.html
 
-	https://webdemo.agora.io/agora-web-showcase/examples/Agora-Web-Tutorial-1to1-Web/
 
-To stop NGINX 
-     sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx -s stop
+You can share the following usage instructions with customers:
+https://tinyurl.com/rtmp2agora     
      
-     
-Logging 
+## Config 
+
      Log level is set in /usr/local/nginx/conf/nginx.conf
      default is 
      error_log logs/error.log notice;
      Can change notice to debug and then restart with 
          sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx -s stop;  sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx 
      log files are in /usr/local/nginx/conf and /tmp for agora logs
+     
+     
+## Logging 
+
+     Log level is set in /usr/local/nginx/conf/nginx.conf
+     default is 
+     error_log logs/error.log notice;
+     Can change notice to debug and then restart with 
+         sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx -s stop;  sudo /home/ubuntu/custom-ngnix/nginx/objs/nginx 
+     log files are in /usr/local/nginx/conf and /tmp for agora logs
+     
      
