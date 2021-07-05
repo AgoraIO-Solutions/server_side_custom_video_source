@@ -1,3 +1,10 @@
+
+## Build a binary distribution package  (#desc)
+
+# Build a binary distribution package (#desc)
+
+### Build a binary distribution package (#desc)
+
 This project extends the NGINX RTMP module, enabling it to publish RTMP audio and video directly into an Agora channel.
 
 For more information on the NGINX RTMP module see 
@@ -101,7 +108,7 @@ No recordings will be written to disk but it was still necessary to create the f
  Example:
  $ ./setup.sh /home/ubuntu/server_side_custom_video_source /home/ubuntu
 
-## Build a binary distribution package 
+## Build a binary distribution package <a name="desc"></a>
 
   Build a binary distribution package by following these steps:
 
