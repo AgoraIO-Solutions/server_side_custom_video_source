@@ -103,13 +103,23 @@ The NGINX recording module will now convert an inbound RTMP bitstream and send t
 
 No recordings will be written to disk but it was still necessary to create the folder /tmp/rec and give it read/write permission
 
-### Install a development version using the setup script
-After cloning the project into your current folder
- $ cd server_side_custom_video_source
- $ sudo ./setup.sh /path/to/the/current/folder /path/to/build/at 
+### Install a development version using the setup.sh script
 
- Example:
- $ ./setup.sh /home/ubuntu/server_side_custom_video_source /home/ubuntu
+setup.sh will perform all of the above but will also delete the source code once built.
+To avoid deleting the source code so you can make changes and rebuild, just comment the last 3 lines (which begin with 'rm') in setup.sh which perform the deletes.
+After cloning the project into your current folder
+
+      $ cd server_side_custom_video_source
+      $ sudo ./setup.sh /path/to/the/current/folder /path/to/build/at 
+
+      Example:
+      $ ./setup.sh /home/ubuntu/server_side_custom_video_source /home/ubuntu
+      
+      To build you can do this:
+      $ cd /home/ubuntu/custom-ngnix/nginx
+      $ ./auto/configure --add-module=../nginx-rtmp-module 
+      $ make
+
 
 ## Binary Creation, Distribution & Installation <a name="binary"></a>
 
