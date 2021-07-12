@@ -6,6 +6,8 @@ cd package
 #assuming nginx is run from inside an install dir (e.g., /home/ubuntu/custom-ngnix/server_side_custom_video_source)
 cp ../../nginx/objs/nginx   source/usr/bin/
 
+mkdir -p source/usr/local/lib/
+
 cp /usr/local/lib/libagora_rtc_sdk.so source/usr/local/lib/
 cp /usr/local/lib/libagorac.so        source/usr/local/lib/
 cp ../rtmpg.conf bin/conf/rtmpg.conf
@@ -32,7 +34,9 @@ rm -rf $DIST_DIR
 
 RELEASE_DIR=release
 
-if [ -d "$ELEASE_DIR" ]; then rm -Rf $RELEASE_DIR; fi
+if [ -d "$RELEASE_DIR" ]; then rm -Rf $RELEASE_DIR; fi
+
+mkdir $RELEASE_DIR
 
 mv $DIST_DIR.tar.gz $RELEASE_DIR
 
